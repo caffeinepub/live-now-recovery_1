@@ -8,7 +8,6 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  Filter,
   MapPin,
   Radio,
   Search,
@@ -51,6 +50,8 @@ export function HomePage() {
 
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [show3dBuildings, setShow3dBuildings] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(true);
   const [adminDrawerOpen, setAdminDrawerOpen] = useState(false);
 
   const liveProviders = providers.filter(
@@ -235,49 +236,110 @@ export function HomePage() {
         </div>
       )}
 
-      {/* ── Results Section: Filters + Map + Provider List ── */}
+      {/* ── Results Section: Map + Provider List ── */}
       <section
         className="w-full bg-teal-mid py-8 px-4"
         data-ocid="home.section"
       >
-        <div className="max-w-7xl mx-auto space-y-4">
-          {/* Filter chips — always visible */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter
-              className="w-4 h-4 shrink-0"
-              style={{ color: "oklch(0.55 0.03 220)" }}
-            />
-            {filterLabels.map(({ key, label, color }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveFilter(key)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all min-h-[36px] hover:scale-[1.03]"
-                style={{
-                  background:
-                    activeFilter === key
-                      ? `${color}20`
-                      : "oklch(0.13 0.03 240)",
-                  border: `1px solid ${
-                    activeFilter === key ? `${color}50` : "oklch(0.22 0.05 240)"
-                  }`,
-                  color: activeFilter === key ? color : "oklch(0.58 0.03 220)",
-                }}
-                data-ocid="home.tab"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
+        <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Map — 60% */}
             <div className="lg:col-span-3">
-              <div className="h-[340px] lg:h-[520px] rounded-xl overflow-hidden shadow-card">
-                <EnhancedRecoveryMap
-                  height="100%"
-                  onToggleLive={isLoggedIn ? handleToggle : undefined}
-                />
+              <div className="flex flex-col rounded-xl overflow-hidden shadow-card">
+                {/* Map */}
+                <div className="h-[340px] lg:h-[520px]">
+                  <EnhancedRecoveryMap
+                    height="100%"
+                    onToggleLive={isLoggedIn ? handleToggle : undefined}
+                    activeFilter={activeFilter}
+                    setActiveFilter={(f) => setActiveFilter(f as FilterType)}
+                    show3dBuildings={show3dBuildings}
+                    showHeatmap={showHeatmap}
+                  />
+                </div>
+
+                {/* Docked filter bar — flush below map */}
+                <div
+                  className="flex items-center gap-1.5 px-3 py-2 flex-wrap"
+                  style={{
+                    background: "#0d1f2d",
+                    borderTop: "1px solid rgba(255,255,255,0.07)",
+                  }}
+                >
+                  {/* Type filter chips */}
+                  {filterLabels.map(({ key, label, color }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveFilter(key)}
+                      className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 hover:scale-[1.03]"
+                      style={{
+                        background:
+                          activeFilter === key
+                            ? `${color}22`
+                            : "rgba(255,255,255,0.05)",
+                        border: `1px solid ${
+                          activeFilter === key
+                            ? `${color}55`
+                            : "rgba(255,255,255,0.1)"
+                        }`,
+                        color:
+                          activeFilter === key ? color : "oklch(0.55 0.03 220)",
+                      }}
+                      data-ocid="home.tab"
+                    >
+                      {label}
+                    </button>
+                  ))}
+
+                  {/* Divider */}
+                  <div
+                    className="w-px h-4 mx-1"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  />
+
+                  {/* Layer toggles */}
+                  <button
+                    type="button"
+                    onClick={() => setShow3dBuildings((v) => !v)}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 hover:scale-[1.03]"
+                    style={{
+                      background: show3dBuildings
+                        ? "rgba(107,114,128,0.2)"
+                        : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${
+                        show3dBuildings
+                          ? "rgba(107,114,128,0.5)"
+                          : "rgba(255,255,255,0.1)"
+                      }`,
+                      color: show3dBuildings
+                        ? "#9ca3af"
+                        : "oklch(0.45 0.03 220)",
+                    }}
+                    data-ocid="home.toggle"
+                  >
+                    3D Buildings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowHeatmap((v) => !v)}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 hover:scale-[1.03]"
+                    style={{
+                      background: showHeatmap
+                        ? "rgba(0,200,180,0.15)"
+                        : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${
+                        showHeatmap
+                          ? "rgba(0,200,180,0.4)"
+                          : "rgba(255,255,255,0.1)"
+                      }`,
+                      color: showHeatmap ? "#6ee7d0" : "oklch(0.45 0.03 220)",
+                    }}
+                    data-ocid="home.toggle"
+                  >
+                    Heatmap
+                  </button>
+                </div>
               </div>
             </div>
 
