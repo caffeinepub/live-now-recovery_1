@@ -140,9 +140,6 @@ importers:
       embla-carousel-react:
         specifier: ^8.2.1
         version: 8.6.0(react@19.1.1)
-      geojson:
-        specifier: ^0.5.0
-        version: 0.5.0
       input-otp:
         specifier: ^1.4.1
         version: 1.4.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -2152,10 +2149,6 @@ packages:
   gensync@1.0.0-beta.2:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
     engines: {node: '>=6.9.0'}
-
-  geojson@0.5.0:
-    resolution: {integrity: sha512-/Bx5lEn+qRF4TfQ5aLu6NH+UKtvIv7Lhc487y/c8BdludrCTpiWf9wyI0RTyqg49MFefIAvFDuEi5Dfd/zgNxQ==}
-    engines: {node: '>= 0.10'}
 
   get-nonce@1.0.1:
     resolution: {integrity: sha512-FJhYRoDaiatfEkUK8HKlicmu/3SGFD51q3itKDGoSTysQJBnfOcxU5GxnhE1E6soB76MbT0MBtnKJuXyAx+96Q==}
@@ -4878,8 +4871,6 @@ snapshots:
   function-bind@1.1.2: {}
 
   gensync@1.0.0-beta.2: {}
-
-  geojson@0.5.0: {}
 
   get-nonce@1.0.1: {}
 
