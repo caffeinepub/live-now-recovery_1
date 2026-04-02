@@ -1,47 +1,42 @@
-# Live Now Recovery — Unified Home + Dashboard Merge
+# Live Now Recovery — UX Polish & Content Pass
 
 ## Current State
-- `/` renders `HomePage.tsx` — hero section, search bar, map, provider list, mission blurb, cities
-- `/dashboard` renders `DashboardPage.tsx` — Live Toggle, provider status table, Live Now panel, quick filters, admin drawer, EnhancedRecoveryMap
-- Both pages have their own `EnhancedRecoveryMap` instance — duplicated logic
-- `Header.tsx` has a `Dashboard` link in navLinks and a `Dashboard` dropdown item under My Account
-- No role-based rendering on the home page — all users see the same content
+- ScrollToTop component exists in App.tsx but may not catch all routes
+- Header has landscape fix (grid-cols-2) already
+- BlogPage cards have basic `hover:border-primary/30` but no scale/lift
+- BlogPostPage uses `text-navy` for h1 which is invisible on dark background
+- 10 of 13 blog posts have empty content arrays in FULL_CONTENT
+- No sitemap page or route exists
+- index.css focus ring rules may be insufficient across all form types
+- Loading/empty states vary in quality across pages
 
 ## Requested Changes (Diff)
 
 ### Add
-- Role-based rendering blocks in `HomePage.tsx`:
-  - When NOT authenticated: show search, map, public provider list, basic providerType filter chips
-  - When authenticated as provider (not admin): show Live Toggle for their provider, "Your Status" card, advanced filter chips, "Live Right Now" side panel
-  - When authenticated as admin: show all of the above plus the collapsible Admin Canister State/Risk Scores drawer
-- A redirect: `/dashboard` → `/` in `App.tsx`
+- `SitemapPage.tsx` — new page at `/sitemap` listing all routes grouped by section
+- `/sitemap` route in App.tsx
+- Sitemap link in Header (desktop nav + mobile menu)
+- Full written content for 10 empty blog posts
 
 ### Modify
-- `HomePage.tsx` — merge all dashboard panel content into the home page with conditional rendering based on auth state (`useInternetIdentity`, `useIsAdmin`)
-- `App.tsx` — replace `dashboardRoute` with a redirect component that navigates to `/`
-- `Header.tsx`:
-  - Remove `{ to: "/dashboard", label: "Dashboard" }` from `navLinks`
-  - In the `My Account` dropdown, replace the `Dashboard` item with nothing (drop it); keep `Admin Panel` and `Sign Out`
-  - In mobile menu, remove the Dashboard link
+- `index.css` — global focus-visible ring for inputs, selects, textareas, buttons
+- `Header.tsx` — add Sitemap nav link
+- `App.tsx` — add sitemap route
+- `BlogPage.tsx` — larger/higher-contrast post titles, tighter layout, hover lift on cards
+- `BlogPostPage.tsx` — fix h1 from text-navy to text-foreground, increase size, fill content
+- `HomePage.tsx` — verify/add hover lift on cards, loading skeletons, empty states
+- `EnhancedRecoveryMap.tsx` — verify map empty state messaging
 
 ### Remove
-- `DashboardPage.tsx` — its logic is fully absorbed into `HomePage.tsx`; the file can stay but be unused, or be deleted from the route tree
+- Nothing removed
 
 ## Implementation Plan
-1. Update `HomePage.tsx`:
-   - Import `useIsAdmin`, `useInternetIdentity`, `useToggleLive`, `useCanisterState` hooks
-   - Keep existing hero section and search bar for everyone
-   - Keep existing map for everyone
-   - Below map / in side panel: render role-based sections:
-     - Public: basic provider list + basic providerType filter chips
-     - Authenticated provider: add "Your Status" toggle card + "Live Right Now" panel + advanced filters + full provider status table
-     - Authenticated admin: additionally render collapsible Admin Canister State drawer
-   - Absorb `handleToggle` logic from DashboardPage
-   - Keep `StatCard` helper inline or as local component
-   - The live count badge / High-Risk Alert from DashboardPage should appear for authenticated users
-2. Update `App.tsx`:
-   - Replace `DashboardPage` import and `dashboardRoute` component with a `Navigate` redirect to `/`
-3. Update `Header.tsx`:
-   - Remove `Dashboard` from `navLinks` array
-   - Remove `Dashboard` DropdownMenuItem from My Account menu
-   - Remove Dashboard link from mobile menu
+1. Update index.css with global focus-visible ring
+2. Fix BlogPostPage h1 color and prose styles
+3. Fill in all 10 missing blog post content arrays with real, well-written content
+4. Improve BlogPage card layout — larger title, hover lift (translate-y + shadow)
+5. Verify/add loading skeleton and empty state on HomePage provider list
+6. Verify EnhancedRecoveryMap empty state
+7. Create SitemapPage.tsx with all routes grouped
+8. Add /sitemap route to App.tsx
+9. Add Sitemap link to Header desktop nav and mobile menu

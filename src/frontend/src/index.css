@@ -60,10 +60,11 @@
     scroll-behavior: smooth;
   }
 
-  /* Global focus ring for all form inputs */
+  /* Global focus ring for all interactive elements */
   input:focus-visible,
   textarea:focus-visible,
-  select:focus-visible {
+  select:focus-visible,
+  button:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px oklch(0.62 0.12 218 / 0.8);
     border-color: oklch(0.62 0.12 218);

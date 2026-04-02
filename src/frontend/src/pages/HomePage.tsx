@@ -312,7 +312,8 @@ export function HomePage() {
                 >
                   <MapPin className="w-8 h-8 mb-2 text-muted-foreground" />
                   <p className="text-muted-foreground text-sm">
-                    No providers match your search.
+                    No providers are live right now. Check back soon or call
+                    833-234-6343.
                   </p>
                 </div>
               ) : (

@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Calendar } from "lucide-react";
+import { ArrowRight, Calendar, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export const BLOG_POSTS = [
   {
@@ -111,6 +113,12 @@ export const BLOG_POSTS = [
 ];
 
 export function BlogPage() {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setLoaded(true), 400);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <main className="min-h-screen py-16 px-4" data-ocid="blog.page">
       <div className="max-w-3xl mx-auto">
@@ -118,39 +126,69 @@ export function BlogPage() {
         <p className="text-muted-foreground mb-10">
           Recovery, access, and technology in NE Ohio.
         </p>
-        <div className="space-y-5" data-ocid="blog.list">
-          {BLOG_POSTS.map((post, i) => (
-            <article
-              key={post.slug}
-              className="bg-card rounded-xl shadow-card border border-border p-6 hover:border-primary/30 transition-colors"
-              data-ocid={`blog.item.${i + 1}`}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <Badge className="bg-primary/10 text-primary border-0 text-xs hover:bg-primary/10">
-                  {post.category}
-                </Badge>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Calendar className="w-3 h-3" />
-                  {post.date}
-                </div>
-              </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">
-                {post.title}
-              </h2>
-              <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
-                {post.excerpt}
-              </p>
-              <Link
-                to="/blog/$slug"
-                params={{ slug: post.slug }}
-                className="inline-flex items-center gap-1 text-primary text-sm font-medium hover:underline"
-                data-ocid="blog.link"
+
+        {!loaded ? (
+          <div className="space-y-5" data-ocid="blog.loading_state">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-card rounded-xl border border-border p-6 space-y-3"
               >
-                Read more <ArrowRight className="w-4 h-4" />
-              </Link>
-            </article>
-          ))}
-        </div>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            ))}
+          </div>
+        ) : BLOG_POSTS.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center h-64 rounded-xl bg-card border border-border"
+            data-ocid="blog.empty_state"
+          >
+            <FileText className="w-10 h-10 mb-3 text-muted-foreground" />
+            <p className="text-muted-foreground font-medium">
+              No posts yet — check back soon.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-5" data-ocid="blog.list">
+            {BLOG_POSTS.map((post, i) => (
+              <article
+                key={post.slug}
+                className="bg-card rounded-xl shadow-card border border-border p-6 hover:border-primary/30 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
+                data-ocid={`blog.item.${i + 1}`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <Badge className="bg-primary/10 text-primary border-0 text-xs hover:bg-primary/10">
+                    {post.category}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Calendar className="w-3 h-3" />
+                    {post.date}
+                  </div>
+                </div>
+                <h2 className="text-xl font-bold text-foreground mb-2">
+                  {post.title}
+                </h2>
+                <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+                  {post.excerpt}
+                </p>
+                <Link
+                  to="/blog/$slug"
+                  params={{ slug: post.slug }}
+                  className="inline-flex items-center gap-1 text-primary text-sm font-medium hover:underline"
+                  data-ocid="blog.link"
+                >
+                  Read more <ArrowRight className="w-4 h-4" />
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

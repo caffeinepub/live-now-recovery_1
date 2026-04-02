@@ -20,6 +20,7 @@ export function Header() {
     { to: "/mission", label: "Mission" },
     { to: "/blog", label: "Blog" },
     { to: "/about", label: "About" },
+    { to: "/sitemap", label: "Sitemap" },
   ];
 
   return (

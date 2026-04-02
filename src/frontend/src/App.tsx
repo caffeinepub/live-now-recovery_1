@@ -30,6 +30,7 @@ import { ProviderPage } from "./pages/ProviderPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { SignupPage } from "./pages/SignupPage";
+import { SitemapPage } from "./pages/SitemapPage";
 import { VerifyPage } from "./pages/VerifyPage";
 
 function ScrollToTop() {
@@ -234,6 +235,12 @@ const medinaRoute = createRoute({
   component: () => <LocationPage townOverride="medina" />,
 });
 
+const sitemapRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sitemap",
+  component: SitemapPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   providerRoute,
@@ -269,6 +276,7 @@ const routeTree = rootRoute.addChildren([
   warrenRoute,
   toledoRoute,
   medinaRoute,
+  sitemapRoute,
 ]);
 
 const router = createRouter({ routeTree });
