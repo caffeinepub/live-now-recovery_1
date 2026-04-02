@@ -113,9 +113,30 @@ export function useRegisterProvider() {
       name,
       lat,
       lng,
-    }: { id: string; name: string; lat: number; lng: number }) => {
+      providerType,
+    }: {
+      id: string;
+      name: string;
+      lat: number;
+      lng: number;
+      providerType?: string;
+    }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.registerProvider(id, name, lat, lng);
+      return (actor as any).registerProvider(id, name, lat, lng, providerType);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allProviders"] });
+    },
+  });
+}
+
+export function useVerifyProvider() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).verifyProvider(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allProviders"] });

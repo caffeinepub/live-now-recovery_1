@@ -23,8 +23,9 @@ export function ProviderPage() {
         className="min-h-screen flex items-center justify-center"
         data-ocid="provider.loading_state"
       >
-        <div className="animate-pulse text-muted-foreground">
-          Loading provider…
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading provider…</p>
         </div>
       </div>
     );

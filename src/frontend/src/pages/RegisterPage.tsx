@@ -37,6 +37,7 @@ export function RegisterPage() {
   const [done, setDone] = useState(false);
   const [form, setForm] = useState({
     clinicName: "",
+    providerType: "",
     npiNumber: "",
     address: "",
     city: "",
@@ -45,11 +46,20 @@ export function RegisterPage() {
   });
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
+  const [providerTypeError, setProviderTypeError] = useState<string | null>(
+    null,
+  );
   const registerProvider = useRegisterProvider();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGeocodeError(null);
+    setProviderTypeError(null);
+
+    if (!form.providerType) {
+      setProviderTypeError("Please select a provider type.");
+      return;
+    }
 
     if (!form.address.trim() || !form.city.trim()) {
       setGeocodeError(
@@ -70,6 +80,7 @@ export function RegisterPage() {
         name: form.clinicName,
         lat,
         lng,
+        providerType: form.providerType,
       });
       setDone(true);
     } catch (err) {
@@ -152,6 +163,7 @@ export function RegisterPage() {
             setDone(false);
             setForm({
               clinicName: "",
+              providerType: "",
               npiNumber: "",
               address: "",
               city: "",
@@ -222,10 +234,46 @@ export function RegisterPage() {
                 setForm((f) => ({ ...f, clinicName: e.target.value }))
               }
               placeholder="Brightside Health — Cleveland"
-              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:border-primary"
               required
               data-ocid="register.input"
             />
+          </div>
+
+          {/* Provider Type */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="providerType"
+              className="text-foreground font-medium"
+            >
+              Provider Type <span className="text-destructive">*</span>
+            </Label>
+            <select
+              id="providerType"
+              value={form.providerType}
+              onChange={(e) => {
+                setProviderTypeError(null);
+                setForm((f) => ({ ...f, providerType: e.target.value }));
+              }}
+              className="min-h-[44px] w-full bg-secondary border border-border text-foreground rounded-md px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+              data-ocid="register.select"
+            >
+              <option value="" disabled>
+                Select a provider type…
+              </option>
+              <option value="MAT">MAT Clinic</option>
+              <option value="Narcan">Narcan Distribution</option>
+              <option value="ER">Emergency Room</option>
+            </select>
+            {providerTypeError && (
+              <div
+                className="flex gap-2 items-center"
+                data-ocid="register.error_state"
+              >
+                <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">{providerTypeError}</p>
+              </div>
+            )}
           </div>
 
           {/* NPI Number */}
@@ -240,7 +288,7 @@ export function RegisterPage() {
                 setForm((f) => ({ ...f, npiNumber: e.target.value }))
               }
               placeholder="1234567890"
-              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground font-mono"
+              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground font-mono focus-visible:ring-primary focus-visible:border-primary"
               required
               maxLength={10}
               data-ocid="register.input"
@@ -263,7 +311,7 @@ export function RegisterPage() {
                 setForm((f) => ({ ...f, address: e.target.value }));
               }}
               placeholder="1234 Main Street"
-              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:border-primary"
               required
               data-ocid="register.input"
             />
@@ -283,7 +331,7 @@ export function RegisterPage() {
                   setForm((f) => ({ ...f, city: e.target.value }));
                 }}
                 placeholder="Cleveland"
-                className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+                className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:border-primary"
                 required
                 data-ocid="register.input"
               />
@@ -299,7 +347,7 @@ export function RegisterPage() {
                   setForm((f) => ({ ...f, zip: e.target.value }))
                 }
                 placeholder="44101"
-                className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+                className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:border-primary"
                 data-ocid="register.input"
               />
             </div>
@@ -340,7 +388,7 @@ export function RegisterPage() {
                 setForm((f) => ({ ...f, phone: e.target.value }))
               }
               placeholder="(216) 555-0100"
-              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+              className="min-h-[44px] bg-secondary border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:border-primary"
               data-ocid="register.input"
             />
           </div>

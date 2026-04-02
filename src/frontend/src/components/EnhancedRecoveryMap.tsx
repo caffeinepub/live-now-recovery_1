@@ -1,6 +1,7 @@
 import type { FeatureCollection, Point } from "geojson";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
 import { useActor } from "../hooks/useActor";
@@ -627,6 +628,16 @@ export function EnhancedRecoveryMap({
     >
       {/* Map canvas */}
       <div ref={mapContainerRef} className="absolute inset-0" />
+
+      {/* Empty state overlay */}
+      {mapReady && providers.length === 0 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 rounded-xl z-10 pointer-events-none">
+          <MapPin className="w-8 h-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground font-medium">
+            No providers found in this area
+          </p>
+        </div>
+      )}
 
       {/* Loading skeleton */}
       {!mapReady && !loadError && (

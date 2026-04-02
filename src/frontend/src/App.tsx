@@ -6,7 +6,9 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useRouterState,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
@@ -27,12 +29,23 @@ import { OhioStatsPage } from "./pages/OhioStatsPage";
 import { ProviderPage } from "./pages/ProviderPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
+import { SignupPage } from "./pages/SignupPage";
 import { VerifyPage } from "./pages/VerifyPage";
+
+function ScrollToTop() {
+  const { location } = useRouterState();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the only dep needed
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location.pathname]);
+  return null;
+}
 
 // Root layout
 function RootLayout() {
   return (
     <div className="min-h-screen flex flex-col">
+      <ScrollToTop />
       <EmergencyBanner />
       <Header />
       <div className="flex-1">
@@ -102,6 +115,11 @@ const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
   component: RegisterPage,
+});
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/signup",
+  component: SignupPage,
 });
 const blogRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -228,6 +246,7 @@ const routeTree = rootRoute.addChildren([
   founderRoute,
   contactRoute,
   registerRoute,
+  signupRoute,
   blogRoute,
   blogPostRoute,
   locationRoute,

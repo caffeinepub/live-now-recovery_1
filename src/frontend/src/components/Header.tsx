@@ -53,7 +53,7 @@ export function Header() {
               <Link
                 key={link.to}
                 to={link.to}
-                className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center px-3 rounded-md text-on-dark hover:text-white"
+                className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center px-3 rounded-md text-on-dark hover:text-white hover:bg-white/5"
                 activeProps={{ className: "text-teal-light font-semibold" }}
                 data-ocid="nav.link"
               >
@@ -62,7 +62,7 @@ export function Header() {
             ))}
             <Link
               to="/helper"
-              className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-md text-teal-light hover:text-white"
+              className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-md text-teal-light hover:text-white hover:bg-white/5"
               data-ocid="nav.link"
             >
               <Users className="w-3.5 h-3.5" />
@@ -139,52 +139,56 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — landscape-safe with 2-col grid */}
       {menuOpen && (
-        <div className="md:hidden px-4 py-3 flex flex-col gap-1 border-t border-border bg-navy">
-          {navLinks.map((link) => (
+        <div className="md:hidden border-t border-border bg-navy max-h-[calc(100dvh-4rem)] overflow-y-auto">
+          <div className="px-4 py-3 grid grid-cols-1 landscape:grid-cols-2 gap-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="py-2.5 px-2 text-sm font-medium transition-colors min-h-[44px] flex items-center rounded-md text-on-dark hover:text-white hover:bg-white/5"
+                activeProps={{ className: "text-teal-light font-semibold" }}
+                onClick={() => setMenuOpen(false)}
+                data-ocid="nav.link"
+              >
+                {link.label}
+              </Link>
+            ))}
             <Link
-              key={link.to}
-              to={link.to}
-              className="py-3 text-sm font-medium transition-colors min-h-[44px] flex items-center text-on-dark hover:text-white"
-              activeProps={{ className: "text-teal-light font-semibold" }}
+              to="/helper"
+              className="py-2.5 px-2 text-sm font-medium min-h-[44px] flex items-center gap-1.5 rounded-md text-teal-light hover:bg-white/5"
               onClick={() => setMenuOpen(false)}
               data-ocid="nav.link"
             >
-              {link.label}
+              <Users className="w-3.5 h-3.5" />
+              Be a Helper
             </Link>
-          ))}
-          <Link
-            to="/helper"
-            className="py-3 text-sm font-medium min-h-[44px] flex items-center gap-1.5 text-teal-light"
-            onClick={() => setMenuOpen(false)}
-            data-ocid="nav.link"
-          >
-            <Users className="w-3.5 h-3.5" />
-            Be a Helper
-          </Link>
-          <a
-            href="tel:833-234-6343"
-            className="mt-1 flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-3 rounded-lg text-sm font-bold min-h-[44px]"
-            onClick={() => setMenuOpen(false)}
-            data-ocid="nav.button"
-          >
-            <Phone className="w-4 h-4" />
-            Call 833-234-6343 (MAR NOW)
-          </a>
-          {!isLoggedIn && (
-            <Button
-              size="sm"
-              className="mt-2 min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => {
-                login();
-                setMenuOpen(false);
-              }}
+          </div>
+          <div className="px-4 pb-3 flex flex-col landscape:flex-row gap-2">
+            <a
+              href="tel:833-234-6343"
+              className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-3 rounded-lg text-sm font-bold min-h-[44px] landscape:flex-1"
+              onClick={() => setMenuOpen(false)}
               data-ocid="nav.button"
             >
-              Sign In
-            </Button>
-          )}
+              <Phone className="w-4 h-4" />
+              Call 833-234-6343 (MAR NOW)
+            </a>
+            {!isLoggedIn && (
+              <Button
+                size="sm"
+                className="min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 landscape:flex-1"
+                onClick={() => {
+                  login();
+                  setMenuOpen(false);
+                }}
+                data-ocid="nav.button"
+              >
+                Sign In
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </header>

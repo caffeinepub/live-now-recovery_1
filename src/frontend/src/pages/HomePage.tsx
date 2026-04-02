@@ -252,7 +252,7 @@ export function HomePage() {
                 key={key}
                 type="button"
                 onClick={() => setActiveFilter(key)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all min-h-[36px]"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all min-h-[36px] hover:scale-[1.03]"
                 style={{
                   background:
                     activeFilter === key
@@ -290,7 +290,22 @@ export function HomePage() {
                 </h2>
               </div>
 
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <div className="space-y-3" data-ocid="home.loading_state">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="bg-card rounded-xl p-4 border border-border animate-pulse"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-2 h-2 rounded-full bg-muted" />
+                        <div className="h-3 w-16 rounded bg-muted" />
+                      </div>
+                      <div className="h-4 w-3/4 rounded bg-muted" />
+                    </div>
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
                 <div
                   className="flex flex-col items-center justify-center h-40 rounded-xl bg-card border border-border shadow-card"
                   data-ocid="home.empty_state"
@@ -309,6 +324,7 @@ export function HomePage() {
                         key={provider.id}
                         to="/provider/$id"
                         params={{ id: provider.id }}
+                        className="block hover:-translate-y-0.5 transition-all duration-150"
                         data-ocid={`home.item.${idx + 1}`}
                       >
                         <div className="group bg-card rounded-xl p-4 shadow-card border border-border hover:border-primary/40 transition-colors">
@@ -437,11 +453,20 @@ export function HomePage() {
                     </div>
                   ) : filteredByType.length === 0 ? (
                     <div
-                      className="p-8 text-center"
+                      className="p-8 text-center flex flex-col items-center gap-2"
                       style={{ color: "oklch(0.58 0.03 220)" }}
                       data-ocid="home.empty_state"
                     >
-                      No providers match this filter.
+                      <Shield
+                        className="w-8 h-8 mb-1"
+                        style={{ color: "oklch(0.35 0.04 220)" }}
+                      />
+                      <p className="font-medium">
+                        No providers match this filter
+                      </p>
+                      <p className="text-xs opacity-70">
+                        Try switching to "All Providers"
+                      </p>
                     </div>
                   ) : (
                     <div
@@ -891,7 +916,7 @@ export function HomePage() {
                 key={path}
                 asChild
                 variant="outline"
-                className="min-h-[44px] transition-all border-primary/40 text-primary hover:bg-primary/10"
+                className="min-h-[44px] transition-all border-primary/40 text-primary hover:bg-primary/10 hover:scale-105"
                 data-ocid="home.button"
               >
                 <Link to={path}>{city}</Link>

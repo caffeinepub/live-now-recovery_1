@@ -3,7 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { AlertTriangle, Lock, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  Lock,
+  Plus,
+  ShieldCheck,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -13,8 +20,15 @@ import {
   useIsAdmin,
   useRegisterProvider,
   useToggleLive,
+  useVerifyProvider,
 } from "../hooks/useQueries";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
+
+const PROVIDER_TYPE_LABELS: Record<string, string> = {
+  MAT: "MAT Clinic",
+  Narcan: "Narcan Distribution",
+  ER: "Emergency Room",
+};
 
 export function AdminPage() {
   const { login, loginStatus } = useInternetIdentity();
@@ -23,8 +37,28 @@ export function AdminPage() {
   const { data: canisterState } = useCanisterState();
   const registerProvider = useRegisterProvider();
   const toggleLive = useToggleLive();
+  const verifyProvider = useVerifyProvider();
 
   const [form, setForm] = useState({ id: "", name: "", lat: "", lng: "" });
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
+
+  const pendingProviders = providers.filter((p) => !(p as any).is_verified);
+
+  const handleApprove = async (id: string) => {
+    setApprovingIds((prev) => new Set(prev).add(id));
+    try {
+      await verifyProvider.mutateAsync(id);
+      toast.success("Provider approved — now live on map");
+    } catch {
+      toast.error("Approval failed. Admin access required.");
+    } finally {
+      setApprovingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +91,10 @@ export function AdminPage() {
         className="min-h-screen flex items-center justify-center"
         data-ocid="admin.loading_state"
       >
-        <div className="animate-pulse text-muted-foreground">Loading…</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
       </div>
     );
   }
@@ -110,6 +147,80 @@ export function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Pending Verification */}
+        <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
+          <div className="flex items-center gap-2 mb-5">
+            <ShieldCheck className="w-5 h-5 text-cplus-teal" />
+            <h2 className="font-bold text-navy">Pending Verification</h2>
+            {pendingProviders.length > 0 && (
+              <Badge className="ml-auto bg-amber-100 text-amber-800 border-amber-200">
+                {pendingProviders.length} pending
+              </Badge>
+            )}
+          </div>
+
+          {pendingProviders.length === 0 ? (
+            <div
+              className="flex flex-col items-center gap-3 py-8 text-center"
+              data-ocid="admin.empty_state"
+            >
+              <CheckCircle2 className="w-8 h-8 text-live" />
+              <p className="text-sm text-muted-foreground">
+                No providers pending approval
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border" data-ocid="admin.list">
+              {pendingProviders.map((p, i) => {
+                const pAny = p as any;
+                const typeLabel =
+                  PROVIDER_TYPE_LABELS[pAny.providerType] ||
+                  pAny.providerType ||
+                  "Unknown";
+                const isApproving = approvingIds.has(p.id);
+                return (
+                  <div
+                    key={p.id}
+                    className="py-4 flex flex-col sm:flex-row sm:items-center gap-3"
+                    data-ocid={`admin.item.${i + 1}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-navy truncate">
+                        {p.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        NPI: {p.id}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="text-xs self-start sm:self-auto"
+                    >
+                      {typeLabel}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      disabled={isApproving}
+                      onClick={() => handleApprove(p.id)}
+                      className="min-h-[36px] bg-cplus-teal hover:bg-cplus-teal/90 text-white self-start sm:self-auto"
+                      data-ocid={`admin.confirm_button.${i + 1}`}
+                    >
+                      {isApproving ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Approving…
+                        </>
+                      ) : (
+                        "Approve"
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Register provider — NO PHI, NO ZIP */}

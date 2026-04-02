@@ -60,6 +60,15 @@
     scroll-behavior: smooth;
   }
 
+  /* Global focus ring for all form inputs */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px oklch(0.62 0.12 218 / 0.8);
+    border-color: oklch(0.62 0.12 218);
+  }
+
   .leaflet-container {
     @apply rounded-xl;
     z-index: 0;
@@ -89,6 +98,9 @@
   }
   .pulse-slow {
     animation: pulse-slow 2s ease-in-out infinite;
+  }
+  .hover-lift {
+    @apply transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md;
   }
 }
 

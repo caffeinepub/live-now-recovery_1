@@ -13,6 +13,9 @@ export default {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      screens: {
+        landscape: { raw: "(orientation: landscape)" },
+      },
       fontFamily: {
         sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
       },

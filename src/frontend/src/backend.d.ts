@@ -40,6 +40,11 @@ export interface ProviderWithStatus {
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    providerType: string;
+    is_verified: boolean;
+    is_active: boolean;
+    inventory: string;
+    reputationScore: bigint;
 }
 export interface UserProfile {
     name: string;
@@ -68,8 +73,12 @@ export interface backendInterface {
     heartbeat(): Promise<Array<string>>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
-    registerProvider(id: string, name: string, lat: number, lng: number): Promise<void>;
+    registerProvider(id: string, name: string, lat: number, lng: number, providerType?: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
     verifyHandoff(token: string): Promise<VerifyResult>;
+    verifyProvider(id: string): Promise<void>;
+    setProviderActiveStatus(id: string, status: boolean): Promise<void>;
+    updateInventory(id: string, inventory: string): Promise<void>;
+    getMarketplaceGeoJSON(): Promise<string>;
 }
