@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, MapPin, Phone, QrCode } from "lucide-react";
+import { BookOpen, MapPin, Phone, QrCode, Shield } from "lucide-react";
 import { VolunteerHandoff } from "../components/VolunteerHandoff";
 
 const steps = [
@@ -27,21 +27,28 @@ const steps = [
 
 export function HelperPage() {
   return (
-    <main className="min-h-screen py-10 px-4" data-ocid="helper.page">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-10">
-          <Badge className="mb-3 bg-cplus-teal/10 text-cplus-teal border-0 hover:bg-cplus-teal/10">
-            Volunteer & Peer Specialist Guide
-          </Badge>
-          <h1 className="text-3xl font-bold text-navy mb-3">
-            How to Use Live Now Recovery
+    <main className="min-h-screen" data-ocid="helper.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16 text-center">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Shield className="w-5 h-5 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              Volunteer & Peer Specialist Guide
+            </p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            How to Use{" "}
+            <span className="text-live-green">Live Now Recovery</span>
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-on-dark text-lg">
             You're on the front lines of the recovery crisis. This guide helps
             you use every tool available.
           </p>
         </div>
+      </section>
 
+      <div className="max-w-3xl mx-auto px-4 py-12">
         {/* Steps */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-12">
           {steps.map((step) => (
@@ -51,8 +58,8 @@ export function HelperPage() {
               data-ocid="helper.card"
             >
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-cplus-teal/10 flex items-center justify-center shrink-0">
-                  <step.icon className="w-5 h-5 text-cplus-teal" />
+                <div className="w-10 h-10 rounded-xl bg-live-green/10 flex items-center justify-center shrink-0">
+                  <step.icon className="w-5 h-5 text-live-green" />
                 </div>
                 <div>
                   <h3 className="font-bold text-navy text-sm mb-1">
