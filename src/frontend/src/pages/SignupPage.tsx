@@ -770,7 +770,7 @@ export function SignupPage() {
             buttonLabel="Continue Anonymously"
             ocid="signup.anonymous.primary_button"
             onClick={() => {
-              window.location.href = "/map";
+              window.location.href = "/";
             }}
           />
           <RoleCard

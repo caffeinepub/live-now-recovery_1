@@ -219,7 +219,9 @@ export function AdminPage() {
     errors: string[];
   }>({ running: false, done: 0, total: 18, errors: [] });
 
-  const pendingProviders = providers.filter((p) => !(p as any).is_verified);
+  // Option 4 workaround: is_verified not on backend yet; use !isLive as proxy
+  // Only show newly registered providers (not yet toggled live by admin)
+  const pendingProviders = providers.filter((p) => !p.isLive);
 
   const handleApprove = async (id: string) => {
     setApprovingIds((prev) => new Set(prev).add(id));
@@ -275,15 +277,11 @@ export function AdminPage() {
 
     for (const p of SEED_PROVIDERS) {
       try {
-        await (actor as any).registerProvider(
-          p.id,
-          p.name,
-          p.lat,
-          p.lng,
-          p.providerType,
-        );
-        await (actor as any).verifyProvider(p.id);
-        await (actor as any).updateInventory(p.id, p.inventory);
+        // Option 4: use 4-arg registerProvider (current backend schema)
+        // verifyProvider and updateInventory not yet on canister
+        await (actor as any).registerProvider(p.id, p.name, p.lat, p.lng);
+        // After registering, toggle live so provider appears on map
+        await (actor as any).toggleLive(p.id, true);
         done++;
         setSeedProgress((prev) => ({ ...prev, done }));
       } catch (err) {

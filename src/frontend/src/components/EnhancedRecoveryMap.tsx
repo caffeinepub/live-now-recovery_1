@@ -456,9 +456,48 @@ export function EnhancedRecoveryMap({
     const map = mapInstanceRef.current;
 
     // ── helpers ──────────────────────────────────────────────────────────
-    async function loadMarketplaceData(): Promise<FeatureCollection> {
-      const raw = await actor!.getMarketplaceGeoJSON();
-      return JSON.parse(raw) as FeatureCollection;
+    function loadMarketplaceData(): FeatureCollection {
+      // Option 4: use getAllProviders (existing endpoint) + convert to GeoJSON
+      // getMarketplaceGeoJSON does not exist on the current canister
+      const geoJson = providersToGeoJSON(
+        providers,
+      ) as unknown as FeatureCollection;
+      // Enrich properties with providerType derived from name for filter compatibility
+      return {
+        ...geoJson,
+        features: geoJson.features.map((f) => {
+          const name = (f.properties?.name as string) ?? "";
+          const nameLower = name.toLowerCase();
+          let providerType = "MAT";
+          if (
+            nameLower.includes("narcan") ||
+            nameLower.includes("naloxone") ||
+            nameLower.includes("harm reduction") ||
+            nameLower.includes("health dept") ||
+            nameLower.includes("aids") ||
+            nameLower.includes("taskforce") ||
+            nameLower.includes("community health center")
+          ) {
+            providerType = "Narcan";
+          } else if (
+            nameLower.includes(" er") ||
+            nameLower.includes("emergency") ||
+            nameLower.includes("hospital") ||
+            nameLower.includes("medical center")
+          ) {
+            providerType = "ER";
+          }
+          return {
+            ...f,
+            properties: {
+              ...f.properties,
+              providerType,
+              is_verified: (f.properties as any)?.isLive ?? false,
+              reputationScore: 0,
+            },
+          };
+        }),
+      };
     }
 
     function filteredData(full: FeatureCollection): FeatureCollection {
@@ -468,7 +507,7 @@ export function EnhancedRecoveryMap({
     // ── main init ────────────────────────────────────────────────────────
     async function initMarketplaceLayer() {
       try {
-        const data = await loadMarketplaceData();
+        const data = loadMarketplaceData();
         marketplaceDataRef.current = data;
 
         // Guard: if source already exists (actor refresh), just update data
@@ -659,7 +698,7 @@ export function EnhancedRecoveryMap({
     // ── 15-second live refresh (smooth setData, no layer rebuild) ─────────
     const intervalId = setInterval(async () => {
       try {
-        const data = await loadMarketplaceData();
+        const data = loadMarketplaceData();
         marketplaceDataRef.current = data;
         const source = map.getSource("marketplace-providers") as
           | maplibregl.GeoJSONSource
@@ -671,7 +710,7 @@ export function EnhancedRecoveryMap({
     }, 15_000);
 
     return () => clearInterval(intervalId);
-  }, [mapReady, actor]);
+  }, [mapReady, actor, providers]);
 
   // ── Filter effect: instant update, no map reinit ─────────────────────────
   useEffect(() => {
