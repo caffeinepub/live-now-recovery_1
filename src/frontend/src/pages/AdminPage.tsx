@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
@@ -13,205 +14,258 @@ import {
   Plus,
   Settings,
   ShieldCheck,
+  Users,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
+import type { Helper } from "../backend";
 import {
+  useAllHelpers,
   useAllProviders,
   useCanisterState,
   useIsAdmin,
   useRegisterProvider,
   useToggleLive,
-  useVerifyProvider,
 } from "../hooks/useQueries";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
 
-const PROVIDER_TYPE_LABELS: Record<string, string> = {
-  MAT: "MAT Clinic",
-  Narcan: "Narcan Distribution",
-  ER: "Emergency Room",
-};
+// ── Type inference from provider name (Option 4 workaround) ──────────────────
+function inferProviderType(name: string): "MAT Clinic" | "Narcan" | "ER" {
+  const lower = name.toLowerCase();
+  if (
+    lower.includes("narcan") ||
+    lower.includes("distribution") ||
+    lower.includes("naloxone")
+  )
+    return "Narcan";
+  if (
+    lower.includes("emergency") ||
+    lower.includes(" er ") ||
+    lower.includes("hospital") ||
+    lower.includes("medical center")
+  )
+    return "ER";
+  return "MAT Clinic";
+}
+
+function ProviderTypeBadge({ name }: { name: string }) {
+  const type = inferProviderType(name);
+  if (type === "Narcan")
+    return (
+      <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200 shrink-0">
+        Narcan
+      </Badge>
+    );
+  if (type === "ER")
+    return (
+      <Badge className="text-xs bg-red-100 text-red-800 border-red-200 shrink-0">
+        ER
+      </Badge>
+    );
+  return (
+    <Badge className="text-xs bg-teal-900/40 text-live-green border-live-green/30 shrink-0">
+      MAT Clinic
+    </Badge>
+  );
+}
+
+function StatusDot({
+  isLive,
+  lastVerified,
+}: { isLive: boolean; lastVerified: bigint }) {
+  const stale = isProviderStale(lastVerified);
+  if (!isLive)
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="w-2 h-2 rounded-full bg-muted-foreground/50 shrink-0" />
+        Offline
+      </span>
+    );
+  if (stale)
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-amber-500">
+        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+        Stale
+      </span>
+    );
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-live-green">
+      <span className="w-2 h-2 rounded-full bg-live-green shrink-0" />
+      Live
+    </span>
+  );
+}
+
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return "***-***-****";
+  return `***-***-${digits.slice(-4)}`;
+}
+
+function formatDate(ts: bigint): string {
+  const ms = Number(ts) / 1_000_000;
+  return new Date(ms).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function HelperCard({ helper, idx }: { helper: Helper; idx: number }) {
+  const truncatedNote =
+    helper.note.length > 80 ? `${helper.note.slice(0, 80)}…` : helper.note;
+  return (
+    <div
+      className="p-4 rounded-xl border border-border bg-muted/20 flex flex-col gap-2"
+      data-ocid={`admin.helper_item.${idx + 1}`}
+    >
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="font-semibold text-sm text-foreground">
+          {helper.firstName}
+        </p>
+        <span className="text-xs text-muted-foreground">
+          {formatDate(helper.createdAt)}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>ZIP: {helper.zip}</span>
+        <span>Phone: {maskPhone(helper.phone)}</span>
+      </div>
+      {truncatedNote && (
+        <p className="text-xs text-foreground/70 italic">{truncatedNote}</p>
+      )}
+    </div>
+  );
+}
 
 const SEED_PROVIDERS = [
-  // MAT Clinics
   {
     id: "seed-mat-001",
     name: "Signature Health – Cleveland",
     lat: 41.4849,
     lng: -81.7984,
-    providerType: "MAT",
-    inventory:
-      "Buprenorphine/naloxone (Suboxone), Vivitrol injections, intake appointments available same week",
   },
   {
     id: "seed-mat-002",
     name: "FrontLine Service – Broadway",
     lat: 41.4578,
     lng: -81.6645,
-    providerType: "MAT",
-    inventory:
-      "Suboxone, Subutex, sliding scale fees, walk-ins accepted Mon–Fri",
   },
   {
     id: "seed-mat-003",
     name: "Oriana House – Akron",
     lat: 41.0814,
     lng: -81.519,
-    providerType: "MAT",
-    inventory:
-      "Buprenorphine, methadone, residential and outpatient MAT, peer support specialists on staff",
   },
   {
     id: "seed-mat-004",
     name: "Cornerstone of Recovery – Akron",
     lat: 41.057,
     lng: -81.5544,
-    providerType: "MAT",
-    inventory: "Suboxone, Vivitrol, telehealth MAT available, accepts Medicaid",
   },
   {
     id: "seed-mat-005",
     name: "Meridian Health Services – Youngstown",
     lat: 41.0891,
     lng: -80.6551,
-    providerType: "MAT",
-    inventory:
-      "Buprenorphine/naloxone, outpatient MAT, behavioral health integration",
   },
   {
     id: "seed-mat-006",
     name: "Signature Health – Elyria",
     lat: 41.3683,
     lng: -82.1077,
-    providerType: "MAT",
-    inventory:
-      "Suboxone, Vivitrol, same-day assessments, accepts most insurance and Medicaid",
   },
-  // Narcan Distribution
   {
     id: "seed-narcan-001",
-    name: "AIDS Taskforce of Greater Cleveland",
+    name: "AIDS Taskforce of Greater Cleveland – Narcan Distribution",
     lat: 41.5078,
     lng: -81.6621,
-    providerType: "Narcan",
-    inventory:
-      "Naloxone kits available at no cost, no prescription required, overdose response training offered",
   },
   {
     id: "seed-narcan-002",
-    name: "Community Health Center of Akron",
+    name: "Community Health Center of Akron – Naloxone Distribution",
     lat: 41.08,
     lng: -81.4967,
-    providerType: "Narcan",
-    inventory:
-      "Free naloxone kits, sharps disposal, harm reduction supplies, peer navigator on site",
   },
   {
     id: "seed-narcan-003",
-    name: "Mahoning County Public Health",
+    name: "Mahoning County Public Health – Narcan",
     lat: 41.1119,
     lng: -80.728,
-    providerType: "Narcan",
-    inventory:
-      "Naloxone kits (2-dose), fentanyl test strips, overdose education, walk-in hours Mon–Fri",
   },
   {
     id: "seed-narcan-004",
-    name: "Stark County Health Dept – North Canton",
+    name: "Stark County Health Dept – North Canton Narcan",
     lat: 40.8756,
     lng: -81.4234,
-    providerType: "Narcan",
-    inventory:
-      "Free Narcan distribution, training classes weekly, no ID required",
   },
   {
     id: "seed-narcan-005",
-    name: "Lorain County Health & Dentistry",
+    name: "Lorain County Health & Dentistry – Naloxone",
     lat: 41.4534,
     lng: -82.1824,
-    providerType: "Narcan",
-    inventory:
-      "Naloxone kits, harm reduction counseling, referrals to MAT providers",
   },
   {
     id: "seed-narcan-006",
-    name: "Quest Recovery – Canton Narcan Dist.",
+    name: "Quest Recovery – Canton Narcan Distribution",
     lat: 40.7735,
     lng: -81.3859,
-    providerType: "Narcan",
-    inventory:
-      "Naloxone kits, recovery coaching, warm handoff to MAT available on request",
   },
-  // Emergency Rooms
   {
     id: "seed-er-001",
     name: "MetroHealth Medical Center ER",
     lat: 41.4714,
     lng: -81.6997,
-    providerType: "ER",
-    inventory:
-      "Naloxone administration, bridge buprenorphine prescription, warm handoff to MAT coordinator",
   },
   {
     id: "seed-er-002",
-    name: "Cleveland Clinic Main Campus ER",
+    name: "Cleveland Clinic Main Campus Emergency Room",
     lat: 41.5036,
     lng: -81.6203,
-    providerType: "ER",
-    inventory:
-      "Overdose intervention, naloxone, ED-initiated buprenorphine, behavioral health consult",
   },
   {
     id: "seed-er-003",
     name: "Summa Health – Akron City Hospital ER",
     lat: 41.0839,
     lng: -81.5063,
-    providerType: "ER",
-    inventory:
-      "Naloxone administration, bridge prescription, peer recovery specialist on duty",
   },
   {
     id: "seed-er-004",
-    name: "St. Elizabeth Youngstown Hospital ER",
+    name: "St. Elizabeth Youngstown Hospital Emergency Room",
     lat: 41.1064,
     lng: -80.6639,
-    providerType: "ER",
-    inventory:
-      "Overdose treatment, ED-initiated MAT, 72-hour bridge prescriptions available",
   },
   {
     id: "seed-er-005",
     name: "Aultman Hospital ER – Canton",
     lat: 40.782,
     lng: -81.4191,
-    providerType: "ER",
-    inventory:
-      "Naloxone, withdrawal management, warm handoff to Stark County MAT providers",
   },
   {
     id: "seed-er-006",
-    name: "UH Elyria Medical Center ER",
+    name: "UH Elyria Medical Center Emergency Room",
     lat: 41.37,
     lng: -82.1035,
-    providerType: "ER",
-    inventory:
-      "Overdose intervention, bridge buprenorphine, referral to Signature Health Elyria",
   },
 ];
+
+const DECAY_24H_NS = 86_400_000_000_000n; // 24 hours in nanoseconds
 
 export function AdminPage() {
   const { login, loginStatus } = useInternetIdentity();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
-  const { data: providers = [] } = useAllProviders();
+  const { data: providers = [], isLoading: providersLoading } =
+    useAllProviders();
+  const { data: helpers = [], isLoading: helpersLoading } = useAllHelpers();
   const { data: canisterState } = useCanisterState();
   const registerProvider = useRegisterProvider();
   const toggleLive = useToggleLive();
-  const verifyProvider = useVerifyProvider();
   const { actor } = useActor(createActor);
 
   const [form, setForm] = useState({ id: "", name: "", lat: "", lng: "" });
-  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
+  const [makingLiveIds, setMakingLiveIds] = useState<Set<string>>(new Set());
   const [seedProgress, setSeedProgress] = useState<{
     running: boolean;
     done: number;
@@ -219,19 +273,21 @@ export function AdminPage() {
     errors: string[];
   }>({ running: false, done: 0, total: 18, errors: [] });
 
-  // Option 4 workaround: is_verified not on backend yet; use !isLive as proxy
-  // Only show newly registered providers (not yet toggled live by admin)
-  const pendingProviders = providers.filter((p) => !p.isLive);
+  // Newly registered = registered within last 24 hours AND not yet live
+  const now = BigInt(Date.now()) * 1_000_000n;
+  const newlyRegistered = providers.filter(
+    (p) => !p.isLive && now - p.lastVerified < DECAY_24H_NS,
+  );
 
-  const handleApprove = async (id: string) => {
-    setApprovingIds((prev) => new Set(prev).add(id));
+  const handleMakeLive = async (id: string) => {
+    setMakingLiveIds((prev) => new Set(prev).add(id));
     try {
-      await verifyProvider.mutateAsync(id);
-      toast.success("Provider approved — now live on map");
+      await toggleLive.mutateAsync({ id, status: true });
+      toast.success("Provider is now live on the map");
     } catch {
-      toast.error("Approval failed. Admin access required.");
+      toast.error("Failed to activate provider. Admin access required.");
     } finally {
-      setApprovingIds((prev) => {
+      setMakingLiveIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
         return next;
@@ -277,11 +333,8 @@ export function AdminPage() {
 
     for (const p of SEED_PROVIDERS) {
       try {
-        // Option 4: use 4-arg registerProvider (current backend schema)
-        // verifyProvider and updateInventory not yet on canister
-        await (actor as any).registerProvider(p.id, p.name, p.lat, p.lng);
-        // After registering, toggle live so provider appears on map
-        await (actor as any).toggleLive(p.id, true);
+        await actor.registerProvider(p.id, p.name, p.lat, p.lng);
+        await actor.toggleLive(p.id, true);
         done++;
         setSeedProgress((prev) => ({ ...prev, done }));
       } catch (err) {
@@ -367,16 +420,16 @@ export function AdminPage() {
             Admin <span className="text-live-green">Panel</span>
           </h1>
           <p className="text-on-dark">
-            Provider verification, seeding, and system controls.
+            Provider activation, helpers, seeding, and system controls.
           </p>
         </div>
       </section>
 
-      <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
         {/* High-Risk Window */}
         {canisterState?.high_risk_window_active && (
           <div
-            className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3"
+            className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3"
             data-ocid="admin.error_state"
           >
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
@@ -391,37 +444,44 @@ export function AdminPage() {
           </div>
         )}
 
-        {/* Pending Verification */}
-        <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
+        {/* ── Newly Registered — Awaiting Activation ─────────────────────────── */}
+        <div className="bg-card rounded-2xl shadow-card border border-border p-6">
           <div className="flex items-center gap-2 mb-5">
             <ShieldCheck className="w-5 h-5 text-live-green" />
-            <h2 className="font-bold text-navy">Pending Verification</h2>
-            {pendingProviders.length > 0 && (
+            <h2 className="font-bold text-foreground">
+              Newly Registered — Awaiting Activation
+            </h2>
+            {newlyRegistered.length > 0 && (
               <Badge className="ml-auto bg-amber-100 text-amber-800 border-amber-200">
-                {pendingProviders.length} pending
+                {newlyRegistered.length} pending
               </Badge>
             )}
           </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Providers registered in the last 24 hours that haven't been made
+            live yet.
+          </p>
 
-          {pendingProviders.length === 0 ? (
+          {providersLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((n) => (
+                <Skeleton key={n} className="h-16 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : newlyRegistered.length === 0 ? (
             <div
               className="flex flex-col items-center gap-3 py-8 text-center"
               data-ocid="admin.empty_state"
             >
-              <CheckCircle2 className="w-8 h-8 text-live" />
+              <CheckCircle2 className="w-8 h-8 text-live-green" />
               <p className="text-sm text-muted-foreground">
-                No providers pending approval
+                No new providers awaiting activation
               </p>
             </div>
           ) : (
             <div className="divide-y divide-border" data-ocid="admin.list">
-              {pendingProviders.map((p, i) => {
-                const pAny = p as any;
-                const typeLabel =
-                  PROVIDER_TYPE_LABELS[pAny.providerType] ||
-                  pAny.providerType ||
-                  "Unknown";
-                const isApproving = approvingIds.has(p.id);
+              {newlyRegistered.map((p, i) => {
+                const isActivating = makingLiveIds.has(p.id);
                 return (
                   <div
                     key={p.id}
@@ -429,33 +489,33 @@ export function AdminPage() {
                     data-ocid={`admin.item.${i + 1}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-navy truncate">
-                        {p.name}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-foreground truncate">
+                          {p.name}
+                        </p>
+                        <ProviderTypeBadge name={p.name} />
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        NPI: {p.id}
+                        ID: {p.id}
                       </p>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className="text-xs self-start sm:self-auto"
-                    >
-                      {typeLabel}
-                    </Badge>
                     <Button
                       size="sm"
-                      disabled={isApproving}
-                      onClick={() => handleApprove(p.id)}
-                      className="min-h-[36px] bg-live-green hover:bg-live-green/90 text-navy font-semibold self-start sm:self-auto"
+                      disabled={isActivating}
+                      onClick={() => handleMakeLive(p.id)}
+                      className="min-h-[36px] bg-live-green hover:bg-live-green/90 text-navy font-semibold self-start sm:self-auto shrink-0"
                       data-ocid={`admin.confirm_button.${i + 1}`}
                     >
-                      {isApproving ? (
+                      {isActivating ? (
                         <>
                           <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          Approving…
+                          Activating…
                         </>
                       ) : (
-                        "Approve"
+                        <>
+                          <Zap className="mr-1.5 h-3.5 w-3.5" />
+                          Make Live
+                        </>
                       )}
                     </Button>
                   </div>
@@ -465,11 +525,62 @@ export function AdminPage() {
           )}
         </div>
 
-        {/* Seed Demo Providers */}
-        <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
+        {/* ── Registered Helpers ─────────────────────────────────────────────── */}
+        <div className="bg-card rounded-2xl shadow-card border border-border p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-5 h-5 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              Community
+            </p>
+          </div>
+          <div className="flex items-center gap-3 mb-5">
+            <h2 className="font-bold text-foreground">Registered Helpers</h2>
+            {helpers.length > 0 && (
+              <Badge className="bg-teal-900/40 text-live-green border-live-green/30">
+                {helpers.length} volunteer{helpers.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+
+          {helpersLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[1, 2, 3].map((n) => (
+                <Skeleton key={n} className="h-24 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : helpers.length === 0 ? (
+            <div
+              className="flex flex-col items-center gap-3 py-10 text-center"
+              data-ocid="admin.helper_empty_state"
+            >
+              <Users className="w-8 h-8 text-muted-foreground/40" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  No helpers registered yet
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Volunteers who sign up via the Be a Helper page will appear
+                  here.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+              data-ocid="admin.helpers_list"
+            >
+              {helpers.map((h, i) => (
+                <HelperCard key={h.id} helper={h} idx={i} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Seed Demo Providers ────────────────────────────────────────────── */}
+        <div className="bg-card rounded-2xl shadow-card border border-border p-6">
           <div className="flex items-center gap-2 mb-4">
             <Database className="w-5 h-5 text-live-green" />
-            <h2 className="font-bold text-navy">Seed Demo Providers</h2>
+            <h2 className="font-bold text-foreground">Seed Demo Providers</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-5">
             Populate the map with verified Ohio providers for demo and pitch
@@ -478,11 +589,11 @@ export function AdminPage() {
 
           {seedDone ? (
             <div
-              className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200"
+              className="flex items-center gap-3 p-4 rounded-xl bg-emerald-950/40 border border-live-green/30"
               data-ocid="admin.success_state"
             >
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <p className="text-sm font-medium text-emerald-800">
+              <CheckCircle2 className="w-5 h-5 text-live-green shrink-0" />
+              <p className="text-sm font-medium text-live-green">
                 All 18 providers seeded successfully
               </p>
             </div>
@@ -538,12 +649,13 @@ export function AdminPage() {
           )}
         </div>
 
+        {/* ── Register + All Providers ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Register provider — NO PHI, NO ZIP */}
-          <div className="bg-white rounded-2xl shadow-card border border-border p-6">
+          {/* Register provider */}
+          <div className="bg-card rounded-2xl shadow-card border border-border p-6">
             <div className="flex items-center gap-2 mb-5">
               <Plus className="w-5 h-5 text-live-green" />
-              <h2 className="font-bold text-navy">Register Provider</h2>
+              <h2 className="font-bold text-foreground">Register Provider</h2>
             </div>
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
@@ -624,12 +736,23 @@ export function AdminPage() {
             </form>
           </div>
 
-          {/* Provider toggles */}
-          <div className="bg-white rounded-2xl shadow-card border border-border overflow-hidden">
-            <div className="px-5 py-4 border-b border-border">
-              <h2 className="font-bold text-navy">Provider Controls</h2>
+          {/* All Providers table */}
+          <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <h2 className="font-bold text-foreground">All Providers</h2>
+              {providers.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {providers.length} total
+                </span>
+              )}
             </div>
-            {providers.length === 0 ? (
+            {providersLoading ? (
+              <div className="p-4 space-y-3">
+                {[1, 2, 3].map((n) => (
+                  <Skeleton key={n} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : providers.length === 0 ? (
               <div
                 className="p-8 text-center text-muted-foreground"
                 data-ocid="admin.empty_state"
@@ -637,26 +760,30 @@ export function AdminPage() {
                 No providers yet.
               </div>
             ) : (
-              <div className="divide-y divide-border max-h-96 overflow-y-auto">
+              <div className="divide-y divide-border max-h-[480px] overflow-y-auto">
                 {providers.map((p, i) => (
                   <div
                     key={p.id}
-                    className="px-5 py-3 flex items-center gap-3"
+                    className="px-4 py-3 flex items-center gap-3"
                     data-ocid={`admin.item.${i + 1}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-navy truncate">
-                        {p.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {isProviderStale(p.lastVerified)
-                          ? "stale"
-                          : statusLabel(p.status)}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm text-foreground truncate">
+                          {p.name}
+                        </p>
+                        <ProviderTypeBadge name={p.name} />
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <StatusDot
+                          isLive={p.isLive}
+                          lastVerified={p.lastVerified}
+                        />
+                        <span className="text-xs text-muted-foreground/60">
+                          {Number(p.lat).toFixed(3)}, {Number(p.lng).toFixed(3)}
+                        </span>
+                      </div>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {p.isLive ? "Live" : "Offline"}
-                    </Badge>
                     <Switch
                       checked={p.isLive}
                       onCheckedChange={() => handleToggle(p.id, p.isLive)}
