@@ -1,8 +1,9 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import type { FeatureCollection, Point } from "geojson";
 import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
-import { useActor } from "../hooks/useActor";
+import { createActor } from "../backend";
 import { useAllProviders, useHandoffCountsByZip } from "../hooks/useQueries";
 import {
   handoffCountsToHeatmapGeoJSON,
@@ -73,7 +74,7 @@ export function EnhancedRecoveryMap({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // ── Marketplace additions ─────────────────────────────────────────────────
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
   // Holds latest full dataset so filter changes don't require a network call
   const marketplaceDataRef = useRef<FeatureCollection | null>(null);
   // Mirror activeFilter for use inside stable map event callbacks

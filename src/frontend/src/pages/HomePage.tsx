@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
@@ -22,7 +23,6 @@ import { ProviderStatus } from "../backend";
 import { EnhancedRecoveryMap } from "../components/EnhancedRecoveryMap";
 import { HandoffImpact } from "../components/HandoffImpact";
 import { PriceComparisonCard } from "../components/PriceComparisonCard";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAllProviders,
   useCanisterState,

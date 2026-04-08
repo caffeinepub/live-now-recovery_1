@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -15,8 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { createActor } from "../backend";
 import {
   useAllProviders,
   useCanisterState,
@@ -208,7 +208,7 @@ export function AdminPage() {
   const registerProvider = useRegisterProvider();
   const toggleLive = useToggleLive();
   const verifyProvider = useVerifyProvider();
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
 
   const [form, setForm] = useState({ id: "", name: "", lat: "", lng: "" });
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
