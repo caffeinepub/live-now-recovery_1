@@ -23,6 +23,7 @@ import { FounderPage } from "./pages/FounderPage";
 import { HelperPage } from "./pages/HelperPage";
 import { HomePage } from "./pages/HomePage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
+import { IntegrationPage } from "./pages/IntegrationPage";
 import { LocationPage } from "./pages/LocationPage";
 import { MissionPage } from "./pages/MissionPage";
 import { OhioStatsPage } from "./pages/OhioStatsPage";
@@ -71,7 +72,6 @@ const providerRoute = createRoute({
   path: "/provider/$id",
   component: ProviderPage,
 });
-// /dashboard redirects to home — no separate dashboard experience
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
@@ -157,6 +157,11 @@ const ohioStatsRoute = createRoute({
   path: "/ohio-stats",
   component: OhioStatsPage,
 });
+const integrationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/integration",
+  component: IntegrationPage,
+});
 
 // Direct SEO city routes
 const clevelandRoute = createRoute({
@@ -234,7 +239,6 @@ const medinaRoute = createRoute({
   path: "/medina",
   component: () => <LocationPage townOverride="medina" />,
 });
-
 const sitemapRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sitemap",
@@ -261,6 +265,7 @@ const routeTree = rootRoute.addChildren([
   faqRoute,
   howItWorksRoute,
   ohioStatsRoute,
+  integrationRoute,
   clevelandRoute,
   lakewoodRoute,
   parmaRoute,

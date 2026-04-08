@@ -6,15 +6,19 @@ import { Switch } from "@/components/ui/switch";
 import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   AlertTriangle,
+  BedDouble,
   CheckCircle2,
+  Clock,
   Database,
   Loader2,
   Lock,
   Plus,
   Settings,
   ShieldCheck,
+  Users,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
 import {
@@ -33,16 +37,65 @@ const PROVIDER_TYPE_LABELS: Record<string, string> = {
   ER: "Emergency Room",
 };
 
+type EmergencyStatus = "open_bed" | "72hr_bridge" | null;
+
+function getEmergencyStatus(
+  id: string,
+): { status: EmergencyStatus; setAt: number } | null {
+  try {
+    const raw = localStorage.getItem(`emergency_status_${id}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      status: EmergencyStatus;
+      setAt: number;
+    };
+    if (Date.now() - parsed.setAt > 72 * 60 * 60 * 1000) {
+      localStorage.removeItem(`emergency_status_${id}`);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setEmergencyStatus(id: string, status: EmergencyStatus) {
+  if (!status) {
+    localStorage.removeItem(`emergency_status_${id}`);
+  } else {
+    localStorage.setItem(
+      `emergency_status_${id}`,
+      JSON.stringify({ status, setAt: Date.now() }),
+    );
+  }
+}
+
+function isERProvider(name: string): boolean {
+  const lower = name.toLowerCase();
+  return (
+    lower.includes(" er") ||
+    lower.includes("emergency") ||
+    lower.includes("hospital") ||
+    lower.includes("bridge")
+  );
+}
+
+function formatCountdown(setAt: number): string {
+  const elapsed = Date.now() - setAt;
+  const remaining = 72 * 60 * 60 * 1000 - elapsed;
+  if (remaining <= 0) return "Expired";
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  return `${hours}h ${minutes}m remaining`;
+}
+
 const SEED_PROVIDERS = [
-  // MAT Clinics
   {
     id: "seed-mat-001",
     name: "Signature Health – Cleveland",
     lat: 41.4849,
     lng: -81.7984,
     providerType: "MAT",
-    inventory:
-      "Buprenorphine/naloxone (Suboxone), Vivitrol injections, intake appointments available same week",
   },
   {
     id: "seed-mat-002",
@@ -50,8 +103,6 @@ const SEED_PROVIDERS = [
     lat: 41.4578,
     lng: -81.6645,
     providerType: "MAT",
-    inventory:
-      "Suboxone, Subutex, sliding scale fees, walk-ins accepted Mon–Fri",
   },
   {
     id: "seed-mat-003",
@@ -59,8 +110,6 @@ const SEED_PROVIDERS = [
     lat: 41.0814,
     lng: -81.519,
     providerType: "MAT",
-    inventory:
-      "Buprenorphine, methadone, residential and outpatient MAT, peer support specialists on staff",
   },
   {
     id: "seed-mat-004",
@@ -68,7 +117,6 @@ const SEED_PROVIDERS = [
     lat: 41.057,
     lng: -81.5544,
     providerType: "MAT",
-    inventory: "Suboxone, Vivitrol, telehealth MAT available, accepts Medicaid",
   },
   {
     id: "seed-mat-005",
@@ -76,8 +124,6 @@ const SEED_PROVIDERS = [
     lat: 41.0891,
     lng: -80.6551,
     providerType: "MAT",
-    inventory:
-      "Buprenorphine/naloxone, outpatient MAT, behavioral health integration",
   },
   {
     id: "seed-mat-006",
@@ -85,18 +131,13 @@ const SEED_PROVIDERS = [
     lat: 41.3683,
     lng: -82.1077,
     providerType: "MAT",
-    inventory:
-      "Suboxone, Vivitrol, same-day assessments, accepts most insurance and Medicaid",
   },
-  // Narcan Distribution
   {
     id: "seed-narcan-001",
     name: "AIDS Taskforce of Greater Cleveland",
     lat: 41.5078,
     lng: -81.6621,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits available at no cost, no prescription required, overdose response training offered",
   },
   {
     id: "seed-narcan-002",
@@ -104,8 +145,6 @@ const SEED_PROVIDERS = [
     lat: 41.08,
     lng: -81.4967,
     providerType: "Narcan",
-    inventory:
-      "Free naloxone kits, sharps disposal, harm reduction supplies, peer navigator on site",
   },
   {
     id: "seed-narcan-003",
@@ -113,8 +152,6 @@ const SEED_PROVIDERS = [
     lat: 41.1119,
     lng: -80.728,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits (2-dose), fentanyl test strips, overdose education, walk-in hours Mon–Fri",
   },
   {
     id: "seed-narcan-004",
@@ -122,8 +159,6 @@ const SEED_PROVIDERS = [
     lat: 40.8756,
     lng: -81.4234,
     providerType: "Narcan",
-    inventory:
-      "Free Narcan distribution, training classes weekly, no ID required",
   },
   {
     id: "seed-narcan-005",
@@ -131,8 +166,6 @@ const SEED_PROVIDERS = [
     lat: 41.4534,
     lng: -82.1824,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits, harm reduction counseling, referrals to MAT providers",
   },
   {
     id: "seed-narcan-006",
@@ -140,18 +173,13 @@ const SEED_PROVIDERS = [
     lat: 40.7735,
     lng: -81.3859,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits, recovery coaching, warm handoff to MAT available on request",
   },
-  // Emergency Rooms
   {
     id: "seed-er-001",
     name: "MetroHealth Medical Center ER",
     lat: 41.4714,
     lng: -81.6997,
     providerType: "ER",
-    inventory:
-      "Naloxone administration, bridge buprenorphine prescription, warm handoff to MAT coordinator",
   },
   {
     id: "seed-er-002",
@@ -159,8 +187,6 @@ const SEED_PROVIDERS = [
     lat: 41.5036,
     lng: -81.6203,
     providerType: "ER",
-    inventory:
-      "Overdose intervention, naloxone, ED-initiated buprenorphine, behavioral health consult",
   },
   {
     id: "seed-er-003",
@@ -168,8 +194,6 @@ const SEED_PROVIDERS = [
     lat: 41.0839,
     lng: -81.5063,
     providerType: "ER",
-    inventory:
-      "Naloxone administration, bridge prescription, peer recovery specialist on duty",
   },
   {
     id: "seed-er-004",
@@ -177,8 +201,6 @@ const SEED_PROVIDERS = [
     lat: 41.1064,
     lng: -80.6639,
     providerType: "ER",
-    inventory:
-      "Overdose treatment, ED-initiated MAT, 72-hour bridge prescriptions available",
   },
   {
     id: "seed-er-005",
@@ -186,8 +208,6 @@ const SEED_PROVIDERS = [
     lat: 40.782,
     lng: -81.4191,
     providerType: "ER",
-    inventory:
-      "Naloxone, withdrawal management, warm handoff to Stark County MAT providers",
   },
   {
     id: "seed-er-006",
@@ -195,8 +215,6 @@ const SEED_PROVIDERS = [
     lat: 41.37,
     lng: -82.1035,
     providerType: "ER",
-    inventory:
-      "Overdose intervention, bridge buprenorphine, referral to Signature Health Elyria",
   },
 ];
 
@@ -219,8 +237,39 @@ export function AdminPage() {
     errors: string[];
   }>({ running: false, done: 0, total: 18, errors: [] });
 
-  // Option 4 workaround: is_verified not on backend yet; use !isLive as proxy
-  // Only show newly registered providers (not yet toggled live by admin)
+  // Emergency availability state
+  const [emergencyStatuses, setEmergencyStatuses] = useState<
+    Record<string, { status: EmergencyStatus; setAt: number } | null>
+  >({});
+
+  useEffect(() => {
+    const map: Record<
+      string,
+      { status: EmergencyStatus; setAt: number } | null
+    > = {};
+    for (const p of providers) {
+      map[p.id] = getEmergencyStatus(p.id);
+    }
+    setEmergencyStatuses(map);
+  }, [providers]);
+
+  const handleEmergencyToggle = (id: string, status: EmergencyStatus) => {
+    const current = emergencyStatuses[id]?.status;
+    const next = current === status ? null : status;
+    setEmergencyStatus(id, next);
+    setEmergencyStatuses((prev) => ({
+      ...prev,
+      [id]: next ? { status: next, setAt: Date.now() } : null,
+    }));
+    if (next) {
+      toast.success(
+        `${status === "open_bed" ? "Open Bed" : "72-Hour Bridge"} status set for this provider.`,
+      );
+    } else {
+      toast.success("Emergency status cleared.");
+    }
+  };
+
   const pendingProviders = providers.filter((p) => !p.isLive);
 
   const handleApprove = async (id: string) => {
@@ -277,10 +326,7 @@ export function AdminPage() {
 
     for (const p of SEED_PROVIDERS) {
       try {
-        // Option 4: use 4-arg registerProvider (current backend schema)
-        // verifyProvider and updateInventory not yet on canister
         await (actor as any).registerProvider(p.id, p.name, p.lat, p.lng);
-        // After registering, toggle live so provider appears on map
         await (actor as any).toggleLive(p.id, true);
         done++;
         setSeedProgress((prev) => ({ ...prev, done }));
@@ -352,6 +398,9 @@ export function AdminPage() {
     (seedProgress.done / seedProgress.total) * 100,
   );
 
+  // ER providers for emergency availability section
+  const erProviders = providers.filter((p) => isERProvider(p.name));
+
   return (
     <main className="min-h-screen" data-ocid="admin.page">
       {/* Dark hero header */}
@@ -402,7 +451,6 @@ export function AdminPage() {
               </Badge>
             )}
           </div>
-
           {pendingProviders.length === 0 ? (
             <div
               className="flex flex-col items-center gap-3 py-8 text-center"
@@ -465,6 +513,179 @@ export function AdminPage() {
           )}
         </div>
 
+        {/* Emergency Availability Section */}
+        <div
+          className="rounded-2xl border p-6 mb-8"
+          style={{
+            background: "oklch(0.13 0.03 240)",
+            border: "1px solid oklch(0.24 0.05 240)",
+          }}
+          data-ocid="admin.panel"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <BedDouble className="w-5 h-5" style={{ color: "#00ff88" }} />
+            <h2 className="font-bold" style={{ color: "oklch(0.90 0.01 200)" }}>
+              Emergency Availability
+            </h2>
+            <Badge
+              variant="outline"
+              className="ml-auto text-[10px] font-bold border-live-green/30 text-live-green"
+            >
+              ER / Bridge Clinics
+            </Badge>
+          </div>
+          <p className="text-sm mb-6" style={{ color: "oklch(0.55 0.03 220)" }}>
+            Signal real-time bed or bridge prescription availability for ER and
+            bridge clinics. Status is stored locally and clears after 72 hours.
+          </p>
+
+          {erProviders.length === 0 ? (
+            <div className="py-8 text-center" data-ocid="admin.empty_state">
+              <AlertTriangle
+                className="w-8 h-8 mx-auto mb-2"
+                style={{ color: "oklch(0.40 0.05 220)" }}
+              />
+              <p className="text-sm" style={{ color: "oklch(0.50 0.03 220)" }}>
+                No ER or bridge providers found. Seed demo providers to populate
+                this list.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3" data-ocid="admin.list">
+              {erProviders.map((p, i) => {
+                const emergData = emergencyStatuses[p.id];
+                const currentStatus = emergData?.status ?? null;
+                return (
+                  <div
+                    key={p.id}
+                    className="rounded-xl p-4"
+                    style={{
+                      background: "oklch(0.16 0.03 240)",
+                      border: currentStatus
+                        ? "1px solid oklch(0.82 0.18 145 / 0.25)"
+                        : "1px solid oklch(0.22 0.05 240)",
+                    }}
+                    data-ocid={`admin.item.${i + 1}`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p
+                            className="font-semibold text-sm truncate"
+                            style={{ color: "oklch(0.88 0.08 195)" }}
+                          >
+                            {p.name}
+                          </p>
+                          {currentStatus && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{
+                                background:
+                                  currentStatus === "open_bed"
+                                    ? "oklch(0.55 0.18 145 / 0.15)"
+                                    : "oklch(0.75 0.18 70 / 0.15)",
+                                color:
+                                  currentStatus === "open_bed"
+                                    ? "#4ade80"
+                                    : "#fbbf24",
+                                border: `1px solid ${currentStatus === "open_bed" ? "#4ade8040" : "#fbbf2440"}`,
+                              }}
+                            >
+                              {currentStatus === "open_bed" ? (
+                                <BedDouble className="w-3 h-3" />
+                              ) : (
+                                <Clock className="w-3 h-3" />
+                              )}
+                              {currentStatus === "open_bed"
+                                ? "ACTIVE: Open Bed"
+                                : "ACTIVE: 72-Hr Bridge"}
+                            </span>
+                          )}
+                        </div>
+                        {emergData && (
+                          <p
+                            className="text-[11px] mt-0.5"
+                            style={{ color: "oklch(0.45 0.03 220)" }}
+                          >
+                            {formatCountdown(emergData.setAt)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleEmergencyToggle(p.id, "open_bed")
+                          }
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px]"
+                          style={{
+                            background:
+                              currentStatus === "open_bed"
+                                ? "oklch(0.55 0.18 145 / 0.25)"
+                                : "oklch(0.20 0.04 240)",
+                            border: `1px solid ${currentStatus === "open_bed" ? "#4ade8040" : "oklch(0.28 0.05 240)"}`,
+                            color:
+                              currentStatus === "open_bed"
+                                ? "#4ade80"
+                                : "oklch(0.60 0.04 220)",
+                          }}
+                          data-ocid={`admin.toggle.${i + 1}`}
+                        >
+                          Open Bed
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleEmergencyToggle(p.id, "72hr_bridge")
+                          }
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px]"
+                          style={{
+                            background:
+                              currentStatus === "72hr_bridge"
+                                ? "oklch(0.75 0.18 70 / 0.20)"
+                                : "oklch(0.20 0.04 240)",
+                            border: `1px solid ${currentStatus === "72hr_bridge" ? "#fbbf2440" : "oklch(0.28 0.05 240)"}`,
+                            color:
+                              currentStatus === "72hr_bridge"
+                                ? "#fbbf24"
+                                : "oklch(0.60 0.04 220)",
+                          }}
+                          data-ocid={`admin.toggle.${i + 1}`}
+                        >
+                          72-Hr Bridge
+                        </button>
+                        {currentStatus && (
+                          <button
+                            type="button"
+                            onClick={() => handleEmergencyToggle(p.id, null)}
+                            className="p-1.5 rounded-lg transition-all min-h-[36px] min-w-[36px] flex items-center justify-center"
+                            style={{
+                              background: "oklch(0.20 0.04 240)",
+                              border: "1px solid oklch(0.28 0.05 240)",
+                              color: "oklch(0.50 0.03 220)",
+                            }}
+                            aria-label="Clear emergency status"
+                            data-ocid={`admin.cancel_button.${i + 1}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <p
+            className="text-[11px] mt-4"
+            style={{ color: "oklch(0.38 0.03 220)" }}
+          >
+            ⓘ Emergency status is stored in this browser only. It resets
+            automatically after 72 hours and does not update the canister.
+          </p>
+        </div>
+
         {/* Seed Demo Providers */}
         <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
           <div className="flex items-center gap-2 mb-4">
@@ -475,7 +696,6 @@ export function AdminPage() {
             Populate the map with verified Ohio providers for demo and pitch
             purposes.
           </p>
-
           {seedDone ? (
             <div
               className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200"
@@ -503,7 +723,6 @@ export function AdminPage() {
                   "Seed 18 Ohio Providers"
                 )}
               </Button>
-
               {seedProgress.running && (
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-xs text-muted-foreground">
@@ -522,7 +741,6 @@ export function AdminPage() {
               )}
             </>
           )}
-
           {seedProgress.errors.length > 0 && (
             <div className="mt-4 space-y-1" data-ocid="admin.error_state">
               <p className="text-xs font-semibold text-destructive">
@@ -539,7 +757,7 @@ export function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Register provider — NO PHI, NO ZIP */}
+          {/* Register provider */}
           <div className="bg-white rounded-2xl shadow-card border border-border p-6">
             <div className="flex items-center gap-2 mb-5">
               <Plus className="w-5 h-5 text-live-green" />
@@ -626,7 +844,8 @@ export function AdminPage() {
 
           {/* Provider toggles */}
           <div className="bg-white rounded-2xl shadow-card border border-border overflow-hidden">
-            <div className="px-5 py-4 border-b border-border">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <Users className="w-4 h-4 text-live-green" />
               <h2 className="font-bold text-navy">Provider Controls</h2>
             </div>
             {providers.length === 0 ? (

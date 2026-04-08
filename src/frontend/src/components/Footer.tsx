@@ -47,6 +47,7 @@ export function Footer() {
                 { to: "/", label: "Live Map" },
                 { to: "/verify", label: "Verify Handoff" },
                 { to: "/helper", label: "Helper Guide" },
+                { to: "/integration", label: "AI Integration" },
                 { to: "/admin", label: "Admin" },
               ].map((l) => (
                 <li key={l.to}>
@@ -134,19 +135,11 @@ export function Footer() {
           <div className="flex items-center gap-4">
             {[
               { href: "#", icon: SiX, label: "X (Twitter)" },
-              {
-                href: "#",
-                icon: SiFacebook,
-                label: "Facebook",
-              },
-              {
-                href: "#",
-                icon: SiInstagram,
-                label: "Instagram",
-              },
+              { href: "#", icon: SiFacebook, label: "Facebook" },
+              { href: "#", icon: SiInstagram, label: "Instagram" },
             ].map(({ href, icon: Icon, label }) => (
               <a
-                key={href}
+                key={label}
                 href={href}
                 aria-label={label}
                 className="transition-colors hover:text-foreground text-muted-foreground"
