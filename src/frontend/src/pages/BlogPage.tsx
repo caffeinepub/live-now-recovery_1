@@ -120,24 +120,26 @@ export function BlogPage() {
   }, []);
 
   return (
-    <main className="min-h-screen" data-ocid="blog.page">
-      {/* Dark hero header */}
-      <section className="bg-navy px-4 py-16">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-2 mb-3">
-            <Rss className="w-4 h-4 text-live-green" />
-            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
-              Latest
+    <main className="min-h-screen bg-background" data-ocid="blog.page">
+      {/* Dark hero header — explicit bg-navy on both wrapper and section to prevent bleed-through */}
+      <div className="bg-navy w-full">
+        <section className="bg-navy px-4 py-16">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Rss className="w-4 h-4 text-live-green" />
+              <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+                Latest
+              </p>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3">
+              Recovery <span className="text-live-green">Blog</span>
+            </h1>
+            <p className="text-white/70 text-lg">
+              Recovery, access, and technology in NE Ohio.
             </p>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Recovery <span className="text-live-green">Blog</span>
-          </h1>
-          <p className="text-on-dark text-lg">
-            Recovery, access, and technology in NE Ohio.
-          </p>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <div className="max-w-3xl mx-auto px-4 py-12">
         {!loaded ? (

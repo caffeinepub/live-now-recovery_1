@@ -2,7 +2,6 @@ import { useActor } from "@caffeineai/core-infrastructure";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CanisterStateSummary,
-  Helper,
   ProviderWithStatus,
   RiskPacket,
   VerifyResult,
@@ -91,23 +90,6 @@ export function useIsAdmin() {
   });
 }
 
-export function useAllHelpers() {
-  const { actor, isFetching } = useActor(createActor);
-  return useQuery<Helper[]>({
-    queryKey: ["allHelpers"],
-    queryFn: async () => {
-      if (!actor) return [];
-      try {
-        return await actor.getAllHelpers();
-      } catch {
-        return [];
-      }
-    },
-    enabled: !!actor && !isFetching,
-    refetchInterval: 60_000,
-  });
-}
-
 export function useToggleLive() {
   const { actor } = useActor(createActor);
   const qc = useQueryClient();
@@ -132,9 +114,7 @@ export function useRegisterProvider() {
       name,
       lat,
       lng,
-      // providerType accepted but not forwarded — backend schema is 4-arg only
-      // biome-ignore lint/correctness/noUnusedVariables: kept for API compat
-      providerType: _providerType,
+      providerType,
     }: {
       id: string;
       name: string;
@@ -143,7 +123,21 @@ export function useRegisterProvider() {
       providerType?: string;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.registerProvider(id, name, lat, lng);
+      return (actor as any).registerProvider(id, name, lat, lng, providerType);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allProviders"] });
+    },
+  });
+}
+
+export function useVerifyProvider() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).verifyProvider(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allProviders"] });
@@ -201,7 +195,7 @@ export function useRegisterHelper() {
       note: string;
     }): Promise<void> => {
       if (!actor) throw new Error("Not connected");
-      return actor.registerHelper(firstName, zip, phone, note);
+      return (actor as any).registerHelper(firstName, zip, phone, note);
     },
   });
 }

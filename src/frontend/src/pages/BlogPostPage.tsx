@@ -106,31 +106,33 @@ export function BlogPostPage() {
   }
 
   return (
-    <main className="min-h-screen" data-ocid="blog_post.page">
-      {/* Dark hero header */}
-      <section className="bg-navy px-4 py-14">
-        <div className="max-w-2xl mx-auto">
-          <Link
-            to="/blog"
-            className="inline-flex items-center gap-2 text-sm text-on-dark hover:text-white mb-6 transition-colors"
-            data-ocid="blog_post.link"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to blog
-          </Link>
-          <div className="flex items-center gap-3 mb-4">
-            <Badge className="bg-live-green/20 text-live-green border-0 hover:bg-live-green/20">
-              {post.category}
-            </Badge>
-            <div className="flex items-center gap-1 text-xs text-on-dark">
-              <Calendar className="w-3 h-3" />
-              {post.date}
+    <main className="min-h-screen bg-background" data-ocid="blog_post.page">
+      {/* Dark hero header — double bg-navy wrapper prevents any parent color bleed */}
+      <div className="bg-navy w-full">
+        <section className="bg-navy px-4 py-14">
+          <div className="max-w-2xl mx-auto">
+            <Link
+              to="/blog"
+              className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white mb-6 transition-colors"
+              data-ocid="blog_post.link"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to blog
+            </Link>
+            <div className="flex items-center gap-3 mb-4">
+              <Badge className="bg-live-green/20 text-live-green border border-live-green/30 hover:bg-live-green/20 text-xs font-semibold">
+                {post.category}
+              </Badge>
+              <div className="flex items-center gap-1 text-xs text-white/60">
+                <Calendar className="w-3 h-3" />
+                {post.date}
+              </div>
             </div>
+            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight">
+              {post.title}
+            </h1>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight">
-            {post.title}
-          </h1>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="prose prose-slate max-w-none">
