@@ -8,9 +8,9 @@ import Float "mo:core/Float";
 import Order "mo:core/Order";
 import AccessControl "mo:caffeineai-authorization/access-control";
 import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   let DECAY_NS = 14_400_000_000_000;
   let TOKEN_EXPIRY_NS = 300_000_000_000;

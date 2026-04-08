@@ -35,13 +35,15 @@ import {
 } from "../hooks/useQueries";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
 
-type FilterType = "all" | "mat" | "narcan" | "er";
+type FilterType = "all" | "mat" | "narcan" | "er" | "kiosk" | "telehealth";
 
 const filterLabels: { key: FilterType; label: string; color: string }[] = [
   { key: "all", label: "All Providers", color: "#6ee7d0" },
   { key: "mat", label: "MAT", color: "#00ff88" },
   { key: "narcan", label: "Narcan", color: "#fbbf24" },
-  { key: "er", label: "Emergency Rooms", color: "#f87171" },
+  { key: "er", label: "ER", color: "#f87171" },
+  { key: "kiosk", label: "Kiosk", color: "#c084fc" },
+  { key: "telehealth", label: "Telehealth", color: "#818cf8" },
 ];
 
 type EmergencyStatus = "open_bed" | "72hr_bridge" | null;
@@ -166,24 +168,37 @@ export function HomePage() {
   const filteredByType = providers.filter((p) => {
     if (activeFilter === "all") return true;
     const name = p.name.toLowerCase();
+    const pType = (
+      (p as unknown as { providerType?: string }).providerType ?? ""
+    ).toLowerCase();
     if (activeFilter === "mat")
       return (
+        pType === "mat" ||
+        pType === "mat clinic" ||
         name.includes("mat") ||
         name.includes("brightside") ||
         name.includes("buprenorphine")
       );
     if (activeFilter === "narcan")
       return (
+        pType === "narcan" ||
+        pType === "narcan distribution" ||
         name.includes("narcan") ||
         name.includes("naloxone") ||
         name.includes("pharmacy")
       );
     if (activeFilter === "er")
       return (
+        pType === "er" ||
+        pType === "emergency room" ||
         name.includes("er") ||
         name.includes("emergency") ||
         name.includes("hospital")
       );
+    if (activeFilter === "kiosk")
+      return pType === "naloxone kiosk" || name.includes("kiosk");
+    if (activeFilter === "telehealth")
+      return pType === "telehealth mat" || name.includes("telehealth");
     return true;
   });
 

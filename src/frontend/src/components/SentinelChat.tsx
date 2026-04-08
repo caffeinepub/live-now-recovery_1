@@ -14,7 +14,7 @@ const QUICK_REPLIES = [
 
 const BOT_RESPONSES: Record<string, string> = {
   "Find a live provider":
-    "Check the live map on the homepage — teal pins show currently verified providers. You can also visit /dashboard for real-time status.",
+    "Check the live map on the homepage — teal pins show currently verified providers. Return to the home page (/) for real-time status.",
   "How does Proof of Presence work?":
     "A volunteer or peer specialist generates a QR code linked to a ZIP code. When a patient or provider scans it, the system records an anonymous handoff — no names, no PHI. Each verified scan increments the ZIP-level PoP counter.",
   "What is Cost Plus Drugs?":

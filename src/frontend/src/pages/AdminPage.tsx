@@ -36,6 +36,11 @@ const PROVIDER_TYPE_LABELS: Record<string, string> = {
   MAT: "MAT Clinic",
   Narcan: "Narcan Distribution",
   ER: "Emergency Room",
+  "Naloxone Kiosk": "Naloxone Kiosk",
+  "Telehealth MAT": "Telehealth MAT",
+  "MAT Clinic": "MAT Clinic",
+  "Narcan Distribution": "Narcan Distribution",
+  "Emergency Room": "Emergency Room",
 };
 
 type EmergencyStatus = "open_bed" | "72hr_bridge" | null;
@@ -44,6 +49,16 @@ function getEmergencyStatus(
   id: string,
 ): { status: EmergencyStatus; setAt: number } | null {
   try {
+    // Check the bridge_active key first (new), then fall back to emergency_status (legacy)
+    const bridgeRaw = localStorage.getItem(`bridge_active_${id}`);
+    if (bridgeRaw) {
+      const parsed = JSON.parse(bridgeRaw) as { expiresAt: number };
+      if (Date.now() > parsed.expiresAt) {
+        localStorage.removeItem(`bridge_active_${id}`);
+        return null;
+      }
+      return { status: "72hr_bridge", setAt: parsed.expiresAt - 72 * 3600000 };
+    }
     const raw = localStorage.getItem(`emergency_status_${id}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as {
@@ -63,6 +78,13 @@ function getEmergencyStatus(
 function setEmergencyStatus(id: string, status: EmergencyStatus) {
   if (!status) {
     localStorage.removeItem(`emergency_status_${id}`);
+    localStorage.removeItem(`bridge_active_${id}`);
+  } else if (status === "72hr_bridge") {
+    // Use the bridge_active key with an expiry timestamp
+    localStorage.setItem(
+      `bridge_active_${id}`,
+      JSON.stringify({ expiresAt: Date.now() + 72 * 3600000 }),
+    );
   } else {
     localStorage.setItem(
       `emergency_status_${id}`,
@@ -71,8 +93,10 @@ function setEmergencyStatus(id: string, status: EmergencyStatus) {
   }
 }
 
-function isERProvider(name: string): boolean {
-  const lower = name.toLowerCase();
+function isERProvider(p: { name: string; providerType?: string }): boolean {
+  const type = (p as { providerType?: string }).providerType ?? "";
+  if (type === "ER" || type === "Emergency Room") return true;
+  const lower = p.name.toLowerCase();
   return (
     lower.includes(" er") ||
     lower.includes("emergency") ||
@@ -91,6 +115,7 @@ function formatCountdown(setAt: number): string {
 }
 
 const SEED_PROVIDERS = [
+  // MAT Clinics
   {
     id: "seed-mat-001",
     name: "Signature Health – Cleveland",
@@ -133,6 +158,7 @@ const SEED_PROVIDERS = [
     lng: -82.1077,
     providerType: "MAT",
   },
+  // Narcan Distribution
   {
     id: "seed-narcan-001",
     name: "AIDS Taskforce of Greater Cleveland",
@@ -175,6 +201,7 @@ const SEED_PROVIDERS = [
     lng: -81.3859,
     providerType: "Narcan",
   },
+  // Emergency Rooms
   {
     id: "seed-er-001",
     name: "MetroHealth Medical Center ER",
@@ -217,6 +244,64 @@ const SEED_PROVIDERS = [
     lng: -82.1035,
     providerType: "ER",
   },
+  // Naloxone Kiosks (24/7 — always live)
+  {
+    id: "seed-kiosk-001",
+    name: "The Centers Ohio Kiosk – Payne Ave Cleveland",
+    lat: 41.508,
+    lng: -81.6537,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-002",
+    name: "The Centers Ohio Kiosk – Superior Ave Cleveland",
+    lat: 41.5312,
+    lng: -81.6218,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-003",
+    name: "The Centers Ohio Kiosk – 1641 Payne Ave Cleveland",
+    lat: 41.508,
+    lng: -81.6537,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-004",
+    name: "The Centers Ohio Kiosk – Sherman Ave Akron",
+    lat: 41.0754,
+    lng: -81.5124,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-005",
+    name: "Massillon Police Dept Naloxone Kiosk",
+    lat: 40.7962,
+    lng: -81.5218,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-006",
+    name: "Jackson Township Police Naloxone Kiosk",
+    lat: 40.8329,
+    lng: -81.5457,
+    providerType: "Naloxone Kiosk",
+  },
+  // Telehealth MAT (extended hours)
+  {
+    id: "seed-telehealth-001",
+    name: "Spero Health Ohio – Telehealth",
+    lat: 41.4993,
+    lng: -81.6944,
+    providerType: "Telehealth MAT",
+  },
+  {
+    id: "seed-telehealth-002",
+    name: "Eagle HealthWorks – Telehealth MAT",
+    lat: 41.0534,
+    lng: -81.519,
+    providerType: "Telehealth MAT",
+  },
 ];
 
 export function AdminPage() {
@@ -242,7 +327,7 @@ export function AdminPage() {
     done: number;
     total: number;
     errors: string[];
-  }>({ running: false, done: 0, total: 18, errors: [] });
+  }>({ running: false, done: 0, total: SEED_PROVIDERS.length, errors: [] });
 
   // Emergency availability state
   const [emergencyStatuses, setEmergencyStatuses] = useState<
@@ -270,7 +355,7 @@ export function AdminPage() {
     }));
     if (next) {
       toast.success(
-        `${status === "open_bed" ? "Open Bed" : "72-Hour Bridge"} status set for this provider.`,
+        `${status === "open_bed" ? "Open Bed" : "72-Hour Bridge"} status set for this ER.`,
       );
     } else {
       toast.success("Emergency status cleared.");
@@ -362,7 +447,9 @@ export function AdminPage() {
 
     setSeedProgress((prev) => ({ ...prev, running: false }));
     if (errors.length === 0) {
-      toast.success("All 18 Ohio providers seeded successfully!");
+      toast.success(
+        `All ${SEED_PROVIDERS.length} Ohio providers seeded successfully!`,
+      );
     } else {
       toast.warning(
         `Seeded ${done} of ${SEED_PROVIDERS.length} providers. ${errors.length} errors.`,
@@ -392,7 +479,7 @@ export function AdminPage() {
       >
         <Lock className="w-12 h-12 text-muted-foreground" />
         <div className="text-center">
-          <h1 className="text-xl font-bold text-navy mb-2">
+          <h1 className="text-xl font-bold text-foreground mb-2">
             Admin Access Required
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -401,11 +488,17 @@ export function AdminPage() {
         </div>
         <Button
           onClick={() => login()}
-          className="min-h-[44px] bg-action-blue hover:bg-action-blue/90 text-white"
+          className="min-h-[44px] bg-primary hover:bg-primary/90 text-white font-semibold px-8"
           data-ocid="admin.primary_button"
         >
-          Sign In
+          Sign In with Internet Identity
         </Button>
+        {loginStatus === "loginError" && (
+          <p className="text-sm text-destructive text-center max-w-xs">
+            Sign in failed. Please try again or check that popups are allowed
+            for this site.
+          </p>
+        )}
       </div>
     );
   }
@@ -418,8 +511,10 @@ export function AdminPage() {
     (seedProgress.done / seedProgress.total) * 100,
   );
 
-  // ER providers for emergency availability section
-  const erProviders = providers.filter((p) => isERProvider(p.name));
+  // ER providers for emergency availability section (type-aware)
+  const erProviders = providers.filter((p) =>
+    isERProvider({ name: p.name, providerType: (p as any).providerType }),
+  );
 
   return (
     <main className="min-h-screen" data-ocid="admin.page">
@@ -533,30 +628,39 @@ export function AdminPage() {
           )}
         </div>
 
-        {/* Emergency Availability Section */}
+        {/* 72-Hour Bridge Active — ER-specific emergency availability */}
         <div
           className="rounded-2xl border p-6 mb-8"
           style={{
             background: "oklch(0.13 0.03 240)",
-            border: "1px solid oklch(0.24 0.05 240)",
+            borderColor: "oklch(0.24 0.05 240)",
           }}
           data-ocid="admin.panel"
         >
           <div className="flex items-center gap-2 mb-2">
-            <BedDouble className="w-5 h-5" style={{ color: "#00ff88" }} />
+            <BedDouble className="w-5 h-5" style={{ color: "#fbbf24" }} />
             <h2 className="font-bold" style={{ color: "oklch(0.90 0.01 200)" }}>
-              Emergency Availability
+              72-Hour Bridge &amp; ER Availability
             </h2>
             <Badge
               variant="outline"
-              className="ml-auto text-[10px] font-bold border-live-green/30 text-live-green"
+              className="ml-auto text-[10px] font-bold border-amber-500/30 text-amber-400"
             >
-              ER / Bridge Clinics
+              Emergency Rooms Only
             </Badge>
           </div>
-          <p className="text-sm mb-6" style={{ color: "oklch(0.55 0.03 220)" }}>
-            Signal real-time bed or bridge prescription availability for ER and
-            bridge clinics. Status is stored locally and clears after 72 hours.
+          <p className="text-sm mb-2" style={{ color: "oklch(0.55 0.03 220)" }}>
+            Under federal law, an ER physician can administer buprenorphine for
+            up to{" "}
+            <strong style={{ color: "#fbbf24" }}>
+              72 hours without a DEA waiver
+            </strong>{" "}
+            to bridge a patient to ongoing MAT treatment. Signal which ERs are
+            actively participating tonight.
+          </p>
+          <p className="text-xs mb-6" style={{ color: "oklch(0.42 0.03 220)" }}>
+            Status is stored locally in this browser and auto-expires after 72
+            hours. Map pins will show a gold glow when bridge is active.
           </p>
 
           {erProviders.length === 0 ? (
@@ -566,8 +670,8 @@ export function AdminPage() {
                 style={{ color: "oklch(0.40 0.05 220)" }}
               />
               <p className="text-sm" style={{ color: "oklch(0.50 0.03 220)" }}>
-                No ER or bridge providers found. Seed demo providers to populate
-                this list.
+                No ER providers found. Seed demo providers to populate this
+                list.
               </p>
             </div>
           ) : (
@@ -581,9 +685,12 @@ export function AdminPage() {
                     className="rounded-xl p-4"
                     style={{
                       background: "oklch(0.16 0.03 240)",
-                      border: currentStatus
-                        ? "1px solid oklch(0.82 0.18 145 / 0.25)"
-                        : "1px solid oklch(0.22 0.05 240)",
+                      border:
+                        currentStatus === "72hr_bridge"
+                          ? "1px solid rgba(251,191,36,0.3)"
+                          : currentStatus === "open_bed"
+                            ? "1px solid oklch(0.82 0.18 145 / 0.25)"
+                            : "1px solid oklch(0.22 0.05 240)",
                     }}
                     data-ocid={`admin.item.${i + 1}`}
                   >
@@ -697,13 +804,6 @@ export function AdminPage() {
               })}
             </div>
           )}
-          <p
-            className="text-[11px] mt-4"
-            style={{ color: "oklch(0.38 0.03 220)" }}
-          >
-            ⓘ Emergency status is stored in this browser only. It resets
-            automatically after 72 hours and does not update the canister.
-          </p>
         </div>
 
         {/* Seed Demo Providers */}
@@ -714,7 +814,8 @@ export function AdminPage() {
           </div>
           <p className="text-sm text-muted-foreground mb-5">
             Populate the map with verified Ohio providers for demo and pitch
-            purposes.
+            purposes. Includes MAT clinics, Narcan distribution, ERs, naloxone
+            kiosks, and telehealth providers — {SEED_PROVIDERS.length} total.
           </p>
           {seedDone ? (
             <div
@@ -723,7 +824,7 @@ export function AdminPage() {
             >
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <p className="text-sm font-medium text-emerald-800">
-                All 18 providers seeded successfully
+                All {SEED_PROVIDERS.length} providers seeded successfully
               </p>
             </div>
           ) : (
@@ -740,7 +841,7 @@ export function AdminPage() {
                     Seeding… {seedProgress.done} / {seedProgress.total}
                   </>
                 ) : (
-                  "Seed 18 Ohio Providers"
+                  `Seed ${SEED_PROVIDERS.length} Ohio Providers`
                 )}
               </Button>
               {seedProgress.running && (
@@ -862,6 +963,8 @@ export function AdminPage() {
                     Narcan Distribution
                   </option>
                   <option value="Emergency Room">Emergency Room</option>
+                  <option value="Naloxone Kiosk">Naloxone Kiosk (24/7)</option>
+                  <option value="Telehealth MAT">Telehealth MAT</option>
                 </select>
               </div>
               <p className="text-xs text-muted-foreground">
