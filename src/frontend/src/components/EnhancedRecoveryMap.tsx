@@ -1,9 +1,7 @@
-import { useActor } from "@caffeineai/core-infrastructure";
 import type { FeatureCollection, Point } from "geojson";
 import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
-import { createActor } from "../backend";
 import { useAllProviders, useHandoffCountsByZip } from "../hooks/useQueries";
 import {
   handoffCountsToHeatmapGeoJSON,
@@ -74,7 +72,6 @@ export function EnhancedRecoveryMap({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // ── Marketplace additions ─────────────────────────────────────────────────
-  const { actor } = useActor(createActor);
   // Holds latest full dataset so filter changes don't require a network call
   const marketplaceDataRef = useRef<FeatureCollection | null>(null);
   // Mirror activeFilter for use inside stable map event callbacks
@@ -446,14 +443,15 @@ export function EnhancedRecoveryMap({
 
   // ── Marketplace: clustered GeoJSON layer + polling ───────────────────────
   //
-  // Runs once when the map is ready AND the backend actor is available.
+  // Runs once when the map is ready. Providers come from useAllProviders()
+  // which is a PUBLIC QUERY — no auth/actor required.
   // Adds three layers on top of the existing stack:
   //   mp-clusters        — cluster circles (teal, sized by count)
   //   mp-cluster-count   — count labels inside clusters
   //   mp-provider-points — individual verified/unverified points
   //
   useEffect(() => {
-    if (!mapReady || !actor || !mapInstanceRef.current) return;
+    if (!mapReady || !mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
 
     // ── helpers ──────────────────────────────────────────────────────────
@@ -711,7 +709,7 @@ export function EnhancedRecoveryMap({
     }, 15_000);
 
     return () => clearInterval(intervalId);
-  }, [mapReady, actor, providers]);
+  }, [mapReady, providers]);
 
   // ── Filter effect: instant update, no map reinit ─────────────────────────
   useEffect(() => {

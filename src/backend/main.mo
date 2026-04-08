@@ -1,16 +1,16 @@
 import Map "mo:core/Map";
-import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
+import Float "mo:core/Float";
 import Order "mo:core/Order";
-import List "mo:core/List";
-import Iter "mo:core/Iter";
 import AccessControl "mo:caffeineai-authorization/access-control";
 import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   let DECAY_NS = 14_400_000_000_000;
   let TOKEN_EXPIRY_NS = 300_000_000_000;
@@ -42,6 +42,11 @@ actor {
     lng : Float;
     isLive : Bool;
     lastVerified : Int;
+    providerType : Text;
+    is_verified : Bool;
+    is_active : Bool;
+    inventory : Text;
+    reputationScore : Nat;
   };
 
   module Provider {
@@ -60,6 +65,11 @@ actor {
     isLive : Bool;
     lastVerified : Int;
     status : ProviderStatus;
+    providerType : Text;
+    is_verified : Bool;
+    is_active : Bool;
+    inventory : Text;
+    reputationScore : Nat;
   };
 
   type Handoff = {
@@ -111,7 +121,7 @@ actor {
   var riskPacketEntries : [(Text, RiskPacketHistory)] = [];
   var helperEntries : [(Text, Helper)] = [];
   var tokenNonce : Nat = 0;
-  var adminPrincipals : [Principal] = [];
+  let adminPrincipals : [Principal] = [];
 
   // Runtime state
   let providers = Map.empty<Text, Provider>();
@@ -201,11 +211,11 @@ actor {
 
   // Helper function to check if caller is admin (legacy adminPrincipals list)
   func isAdminLegacy(caller : Principal) : Bool {
-    adminPrincipals.find<Principal>(func(p) { Principal.equal(p, caller) }) != null;
+    adminPrincipals.find(func(p) { Principal.equal(p, caller) }) != null;
   };
 
   // Provider Management Functions
-  public query ({ caller }) func getAllProviders() : async [ProviderWithStatus] {
+  public query func getAllProviders() : async [ProviderWithStatus] {
     providers.values().toArray().map(
       func(p) {
         {
@@ -216,12 +226,17 @@ actor {
           isLive = p.isLive;
           lastVerified = p.lastVerified;
           status = resolveStatus(p);
+          providerType = p.providerType;
+          is_verified = p.is_verified;
+          is_active = p.is_active;
+          inventory = p.inventory;
+          reputationScore = p.reputationScore;
         };
       }
     );
   };
 
-  public query ({ caller }) func getEmergencyActive() : async [ProviderWithStatus] {
+  public query func getEmergencyActive() : async [ProviderWithStatus] {
     let now = Time.now();
     providers.values().toArray().filter(
       func(p) {
@@ -237,6 +252,11 @@ actor {
           isLive = p.isLive;
           lastVerified = p.lastVerified;
           status = #Live : ProviderStatus;
+          providerType = p.providerType;
+          is_verified = p.is_verified;
+          is_active = p.is_active;
+          inventory = p.inventory;
+          reputationScore = p.reputationScore;
         };
       }
     );
@@ -256,18 +276,17 @@ actor {
     };
     providers.add(
       id,
-      {
-        id = existing.id;
-        name = existing.name;
-        lat = existing.lat;
-        lng = existing.lng;
-        isLive = status;
-        lastVerified = Time.now();
-      },
+      { existing with isLive = status; lastVerified = Time.now() },
     );
   };
 
-  public shared ({ caller }) func registerProvider(id : Text, name : Text, lat : Float, lng : Float) : async () {
+  public shared ({ caller }) func registerProvider(
+    id : Text,
+    name : Text,
+    lat : Float,
+    lng : Float,
+    providerType : Text,
+  ) : async () {
     if (caller.isAnonymous()) {
       Runtime.trap("Anonymous callers are not allowed");
     };
@@ -278,8 +297,72 @@ actor {
       lng;
       isLive = false;
       lastVerified = Time.now();
+      providerType;
+      is_verified = false;
+      is_active = true;
+      inventory = "";
+      reputationScore = 0;
     };
     providers.add(id, newProvider);
+  };
+
+  // verifyProvider — admin-only, flips is_verified to true
+  public shared ({ caller }) func verifyProvider(id : Text) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can verify providers");
+    };
+    let existing = switch (providers.get(id)) {
+      case (null) { Runtime.trap("Provider not found") };
+      case (?p) { p };
+    };
+    providers.add(id, { existing with is_verified = true });
+  };
+
+  // setProviderActiveStatus — authenticated caller, updates is_active
+  public shared ({ caller }) func setProviderActiveStatus(id : Text, status : Bool) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    let existing = switch (providers.get(id)) {
+      case (null) { Runtime.trap("Provider not found") };
+      case (?p) { p };
+    };
+    providers.add(id, { existing with is_active = status });
+  };
+
+  // updateInventory — authenticated caller, updates inventory text
+  public shared ({ caller }) func updateInventory(id : Text, newInventory : Text) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    let existing = switch (providers.get(id)) {
+      case (null) { Runtime.trap("Provider not found") };
+      case (?p) { p };
+    };
+    providers.add(id, { existing with inventory = newInventory });
+  };
+
+  // getMarketplaceGeoJSON — public query, filters is_active AND is_verified, returns GeoJSON FeatureCollection string
+  public query func getMarketplaceGeoJSON() : async Text {
+    var features : [Text] = [];
+    for ((_, p) in providers.entries()) {
+      if (p.is_active and p.is_verified) {
+        let feature =
+          "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":["
+          # p.lng.toText() # "," # p.lat.toText()
+          # "]},\"properties\":{\"id\":\"" # p.id
+          # "\",\"name\":\"" # p.name
+          # "\",\"providerType\":\"" # p.providerType
+          # "\",\"is_verified\":true,\"is_active\":true"
+          # ",\"reputationScore\":" # p.reputationScore.toText()
+          # ",\"inventory\":\"" # p.inventory # "\"}}";
+        features := features.concat([feature]);
+      };
+    };
+    "{\"type\":\"FeatureCollection\",\"features\":[" # features.vals().join(",") # "]}";
   };
 
   // Handoff Token Functions
@@ -323,12 +406,7 @@ actor {
         // Mark as used
         tokens.add(
           token,
-          {
-            token = t.token;
-            zipCode = t.zipCode;
-            createdAt = t.createdAt;
-            used = true;
-          },
+          { t with used = true },
         );
         // Increment zip count
         let currentCount = switch (zipCounts.get(t.zipCode)) {
@@ -341,11 +419,11 @@ actor {
     };
   };
 
-  public query ({ caller }) func getHandoffCountsByZip() : async [(Text, Nat)] {
+  public query func getHandoffCountsByZip() : async [(Text, Nat)] {
     zipCounts.entries().toArray();
   };
 
-  public query ({ caller }) func getTotalHandoffs() : async Nat {
+  public query func getTotalHandoffs() : async Nat {
     var total : Nat = 0;
     for ((_, count) in zipCounts.entries()) {
       total += count;
@@ -385,7 +463,7 @@ actor {
     riskPackets.add(providerId, history);
   };
 
-  public shared ({ caller }) func heartbeat() : async [Text] {
+  public shared ({ caller }) func runHeartbeat() : async [Text] {
     if (caller.isAnonymous()) {
       Runtime.trap("Anonymous callers are not allowed");
     };
@@ -399,14 +477,7 @@ actor {
       if (now - provider.lastVerified > DECAY_NS) {
         providers.add(
           id,
-          {
-            id = provider.id;
-            name = provider.name;
-            lat = provider.lat;
-            lng = provider.lng;
-            isLive = false;
-            lastVerified = provider.lastVerified;
-          },
+          { provider with isLive = false },
         );
       };
     };
@@ -420,7 +491,7 @@ actor {
     highRiskProviders;
   };
 
-  public query ({ caller }) func getCanisterState() : async CanisterStateSummary {
+  public query func getCanisterState() : async CanisterStateSummary {
     var activeProviders : [(Text, Nat, Bool)] = [];
     var totalActive : Nat = 0;
     let now = Time.now();

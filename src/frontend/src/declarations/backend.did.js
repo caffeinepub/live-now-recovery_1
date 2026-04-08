@@ -31,9 +31,14 @@ export const ProviderWithStatus = IDL.Record({
   'lat' : IDL.Float64,
   'lng' : IDL.Float64,
   'status' : ProviderStatus,
+  'reputationScore' : IDL.Nat,
+  'inventory' : IDL.Text,
   'name' : IDL.Text,
   'isLive' : IDL.Bool,
   'lastVerified' : IDL.Int,
+  'is_verified' : IDL.Bool,
+  'providerType' : IDL.Text,
+  'is_active' : IDL.Bool,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const CanisterStateSummary = IDL.Record({
@@ -70,24 +75,28 @@ export const idlService = IDL.Service({
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
       ['query'],
     ),
+  'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
   'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
-  'heartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
   'registerHelper' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
   'registerProvider' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64],
+      [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64, IDL.Text],
       [],
       [],
     ),
+  'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
   'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+  'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
+  'verifyProvider' : IDL.Func([IDL.Text], [], []),
 });
 
 export const idlInitArgs = [];
@@ -116,9 +125,14 @@ export const idlFactory = ({ IDL }) => {
     'lat' : IDL.Float64,
     'lng' : IDL.Float64,
     'status' : ProviderStatus,
+    'reputationScore' : IDL.Nat,
+    'inventory' : IDL.Text,
     'name' : IDL.Text,
     'isLive' : IDL.Bool,
     'lastVerified' : IDL.Int,
+    'is_verified' : IDL.Bool,
+    'providerType' : IDL.Text,
+    'is_active' : IDL.Bool,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const CanisterStateSummary = IDL.Record({
@@ -159,13 +173,13 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
         ['query'],
       ),
+    'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
     'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'heartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
     'registerHelper' : IDL.Func(
@@ -174,13 +188,17 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'registerProvider' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64],
+        [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64, IDL.Text],
         [],
         [],
       ),
+    'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
     'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+    'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
+    'verifyProvider' : IDL.Func([IDL.Text], [], []),
   });
 };
 

@@ -45,9 +45,14 @@ export interface ProviderWithStatus {
     lat: number;
     lng: number;
     status: ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    is_verified: boolean;
+    providerType: string;
+    is_active: boolean;
 }
 export interface UserProfile {
     name: string;
@@ -72,14 +77,18 @@ export interface backendInterface {
     getCanisterState(): Promise<CanisterStateSummary>;
     getEmergencyActive(): Promise<Array<ProviderWithStatus>>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
+    getMarketplaceGeoJSON(): Promise<string>;
     getTotalHandoffs(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    heartbeat(): Promise<Array<string>>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
     registerHelper(firstName: string, zip: string, phone: string, note: string): Promise<void>;
-    registerProvider(id: string, name: string, lat: number, lng: number): Promise<void>;
+    registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
+    runHeartbeat(): Promise<Array<string>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
+    updateInventory(id: string, newInventory: string): Promise<void>;
     verifyHandoff(token: string): Promise<VerifyResult>;
+    verifyProvider(id: string): Promise<void>;
 }

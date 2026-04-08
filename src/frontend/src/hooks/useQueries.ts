@@ -120,13 +120,14 @@ export function useRegisterProvider() {
       name: string;
       lat: number;
       lng: number;
-      providerType?: string;
+      providerType: string;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).registerProvider(id, name, lat, lng, providerType);
+      return actor.registerProvider(id, name, lat, lng, providerType);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allProviders"] });
+      qc.invalidateQueries({ queryKey: ["marketplaceGeoJSON"] });
     },
   });
 }
@@ -137,11 +138,60 @@ export function useVerifyProvider() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).verifyProvider(id);
+      return actor.verifyProvider(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allProviders"] });
+      qc.invalidateQueries({ queryKey: ["marketplaceGeoJSON"] });
+    },
+  });
+}
+
+export function useSetProviderActiveStatus() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: boolean }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.setProviderActiveStatus(id, status);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allProviders"] });
+      qc.invalidateQueries({ queryKey: ["marketplaceGeoJSON"] });
+    },
+  });
+}
+
+export function useUpdateInventory() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      newInventory,
+    }: {
+      id: string;
+      newInventory: string;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.updateInventory(id, newInventory);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allProviders"] });
     },
+  });
+}
+
+export function useGetMarketplaceGeoJSON() {
+  const { actor, isFetching } = useActor(createActor);
+  return useQuery<string>({
+    queryKey: ["marketplaceGeoJSON"],
+    queryFn: async () => {
+      if (!actor) return '{"type":"FeatureCollection","features":[]}';
+      return actor.getMarketplaceGeoJSON();
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
   });
 }
 
@@ -195,7 +245,7 @@ export function useRegisterHelper() {
       note: string;
     }): Promise<void> => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).registerHelper(firstName, zip, phone, note);
+      return actor.registerHelper(firstName, zip, phone, note);
     },
   });
 }

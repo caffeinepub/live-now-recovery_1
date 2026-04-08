@@ -1,10 +1,22 @@
-// Version: 1.0.0
+// Version: 3.0.0
 type Data__791452850<K, V> =
   {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type HandoffToken__631560619 =
+  {createdAt : Int; token : Text; used : Bool; zipCode : Text};
 type HandoffToken__969534999 =
   {createdAt : Int; token : Text; used : Bool; zipCode : Text};
 type Handoff__23152836 = {timestamp : Int; tokenId : Text; zipCode : Text};
+type Handoff__283434579 = {timestamp : Int; tokenId : Text; zipCode : Text};
 type Helper__207691655 =
+  {
+    createdAt : Int;
+    firstName : Text;
+    id : Text;
+    note : Text;
+    phone : Text;
+    zip : Text
+  };
+type Helper__224227820 =
   {
     createdAt : Int;
     firstName : Text;
@@ -24,14 +36,40 @@ type Nat__490723111 = Nat__920180692;
 type Nat__920180692 = Nat;
 type Node__46230540<K, V> =
   {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
-type Provider__999103737 =
+type Provider__671818565 =
   {
     id : Text;
+    inventory : Text;
     isLive : Bool;
+    is_active : Bool;
+    is_verified : Bool;
     lastVerified : Int;
     lat : Float;
     lng : Float;
-    name : Text
+    name : Text;
+    providerType : Text;
+    reputationScore : Nat
+  };
+type Provider__999103737 =
+  {
+    id : Text;
+    inventory : Text;
+    isLive : Bool;
+    is_active : Bool;
+    is_verified : Bool;
+    lastVerified : Int;
+    lat : Float;
+    lng : Float;
+    name : Text;
+    providerType : Text;
+    reputationScore : Nat
+  };
+type RiskPacketHistory__1033409804 =
+  {
+    current_status : Bool;
+    latest_risk_score : Nat;
+    latest_update_time : Nat;
+    packets : [RiskPacket__312089213]
   };
 type RiskPacketHistory__898629859 =
   {
@@ -39,6 +77,14 @@ type RiskPacketHistory__898629859 =
     latest_risk_score : Nat;
     latest_update_time : Nat;
     packets : [RiskPacket__983375089]
+  };
+type RiskPacket__312089213 =
+  {
+    data_source : Text;
+    last_update_time : Nat;
+    provider_id : Text;
+    risk_score : Nat;
+    status : Bool
   };
 type RiskPacket__983375089 =
   {
@@ -48,9 +94,10 @@ type RiskPacket__983375089 =
     risk_score : Nat;
     status : Bool
   };
+type UserProfile__315128327 = {name : Text};
 type UserProfile__491224006 = {name : Text};
 type UserRole__1054455867 = {#admin; #guest; #user};
-actor {
+actor ({
   stable DECAY_NS : Nat;
   stable HIGH_RISK_THRESHOLD : Nat;
   stable TOKEN_EXPIRY_NS : Nat;
@@ -59,7 +106,31 @@ actor {
       var adminAssigned : Bool;
       userRoles : Map__605269027<Principal, UserRole__1054455867>
     };
-  stable var adminPrincipals : [Principal];
+  in var adminPrincipals : [Principal];
+  in var handoffEntries : [(Text, Handoff__283434579)];
+  in handoffs : Map__605269027<Text, Handoff__283434579>;
+  in var helperEntries : [(Text, Helper__224227820)];
+  in helpers : Map__605269027<Text, Helper__224227820>;
+  in var providerEntries : [(Text, Provider__671818565)];
+  in providers : Map__605269027<Text, Provider__671818565>;
+  in var riskPacketEntries : [(Text, RiskPacketHistory__1033409804)];
+  in riskPackets : Map__605269027<Text, RiskPacketHistory__1033409804>;
+  in var tokenEntries : [(Text, HandoffToken__631560619)];
+  in var tokenNonce : Nat;
+  in tokens : Map__605269027<Text, HandoffToken__631560619>;
+  in userProfiles : Map__605269027<Principal, UserProfile__315128327>;
+  in var zipCountEntries : [(Text, Nat)];
+  in zipCounts : Map__605269027<Text, Nat>
+}, {
+  stable DECAY_NS : Nat;
+  stable HIGH_RISK_THRESHOLD : Nat;
+  stable TOKEN_EXPIRY_NS : Nat;
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__1054455867>
+    };
+  stable adminPrincipals : [Principal];
   stable var handoffEntries : [(Text, Handoff__23152836)];
   stable handoffs :
     {
@@ -99,4 +170,4 @@ actor {
   stable var zipCountEntries : [(Text, Nat)];
   stable zipCounts :
     {var root : Node__46230540<Text, Nat>; var size : Nat__490723111}
-};
+}) ;

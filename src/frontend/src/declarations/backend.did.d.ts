@@ -31,9 +31,14 @@ export interface ProviderWithStatus {
   'lat' : number,
   'lng' : number,
   'status' : ProviderStatus,
+  'reputationScore' : bigint,
+  'inventory' : string,
   'name' : string,
   'isLive' : boolean,
   'lastVerified' : bigint,
+  'is_verified' : boolean,
+  'providerType' : string,
+  'is_active' : boolean,
 }
 export interface RiskPacket {
   'status' : boolean,
@@ -61,16 +66,23 @@ export interface _SERVICE {
   'getCanisterState' : ActorMethod<[], CanisterStateSummary>,
   'getEmergencyActive' : ActorMethod<[], Array<ProviderWithStatus>>,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
+  'getMarketplaceGeoJSON' : ActorMethod<[], string>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'heartbeat' : ActorMethod<[], Array<string>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'receiveRiskPacket' : ActorMethod<[RiskPacket], undefined>,
   'registerHelper' : ActorMethod<[string, string, string, string], undefined>,
-  'registerProvider' : ActorMethod<[string, string, number, number], undefined>,
+  'registerProvider' : ActorMethod<
+    [string, string, number, number, string],
+    undefined
+  >,
+  'runHeartbeat' : ActorMethod<[], Array<string>>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setProviderActiveStatus' : ActorMethod<[string, boolean], undefined>,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
+  'updateInventory' : ActorMethod<[string, string], undefined>,
   'verifyHandoff' : ActorMethod<[string], VerifyResult>,
+  'verifyProvider' : ActorMethod<[string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

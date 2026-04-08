@@ -127,9 +127,14 @@ export interface ProviderWithStatus {
     lat: number;
     lng: number;
     status: ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    is_verified: boolean;
+    providerType: string;
+    is_active: boolean;
 }
 export interface UserProfile {
     name: string;
@@ -155,16 +160,20 @@ export interface backendInterface {
     getCanisterState(): Promise<CanisterStateSummary>;
     getEmergencyActive(): Promise<Array<ProviderWithStatus>>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
+    getMarketplaceGeoJSON(): Promise<string>;
     getTotalHandoffs(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    heartbeat(): Promise<Array<string>>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
     registerHelper(firstName: string, zip: string, phone: string, note: string): Promise<void>;
-    registerProvider(id: string, name: string, lat: number, lng: number): Promise<void>;
+    registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
+    runHeartbeat(): Promise<Array<string>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
+    updateInventory(id: string, newInventory: string): Promise<void>;
     verifyHandoff(token: string): Promise<VerifyResult>;
+    verifyProvider(id: string): Promise<void>;
 }
 import type { ProviderStatus as _ProviderStatus, ProviderWithStatus as _ProviderWithStatus, UserProfile as _UserProfile, UserRole as _UserRole, VerifyResult as _VerifyResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -309,6 +318,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getMarketplaceGeoJSON(): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMarketplaceGeoJSON();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMarketplaceGeoJSON();
+            return result;
+        }
+    }
     async getTotalHandoffs(): Promise<bigint> {
         if (this.processError) {
             try {
@@ -335,20 +358,6 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getUserProfile(arg0);
             return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async heartbeat(): Promise<Array<string>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.heartbeat();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.heartbeat();
-            return result;
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -393,17 +402,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerProvider(arg0: string, arg1: string, arg2: number, arg3: number): Promise<void> {
+    async registerProvider(arg0: string, arg1: string, arg2: number, arg3: number, arg4: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3);
+                const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3, arg4);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3);
+            const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3, arg4);
+            return result;
+        }
+    }
+    async runHeartbeat(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.runHeartbeat();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.runHeartbeat();
             return result;
         }
     }
@@ -421,6 +444,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setProviderActiveStatus(arg0: string, arg1: boolean): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setProviderActiveStatus(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setProviderActiveStatus(arg0, arg1);
+            return result;
+        }
+    }
     async toggleLive(arg0: string, arg1: boolean): Promise<void> {
         if (this.processError) {
             try {
@@ -432,6 +469,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.toggleLive(arg0, arg1);
+            return result;
+        }
+    }
+    async updateInventory(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateInventory(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateInventory(arg0, arg1);
             return result;
         }
     }
@@ -447,6 +498,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.verifyHandoff(arg0);
             return from_candid_VerifyResult_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async verifyProvider(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.verifyProvider(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.verifyProvider(arg0);
+            return result;
         }
     }
 }
@@ -470,26 +535,41 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
     lat: number;
     lng: number;
     status: _ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    is_verified: boolean;
+    providerType: string;
+    is_active: boolean;
 }): {
     id: string;
     lat: number;
     lng: number;
     status: ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    is_verified: boolean;
+    providerType: string;
+    is_active: boolean;
 } {
     return {
         id: value.id,
         lat: value.lat,
         lng: value.lng,
         status: from_candid_ProviderStatus_n6(_uploadFile, _downloadFile, value.status),
+        reputationScore: value.reputationScore,
+        inventory: value.inventory,
         name: value.name,
         isLive: value.isLive,
-        lastVerified: value.lastVerified
+        lastVerified: value.lastVerified,
+        is_verified: value.is_verified,
+        providerType: value.providerType,
+        is_active: value.is_active
     };
 }
 function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

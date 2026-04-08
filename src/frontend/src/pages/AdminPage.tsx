@@ -21,6 +21,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
+import { HealthMonitor } from "../components/HealthMonitor";
 import {
   useAllProviders,
   useCanisterState,
@@ -228,7 +229,13 @@ export function AdminPage() {
   const verifyProvider = useVerifyProvider();
   const { actor } = useActor(createActor);
 
-  const [form, setForm] = useState({ id: "", name: "", lat: "", lng: "" });
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    lat: "",
+    lng: "",
+    providerType: "MAT Clinic",
+  });
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [seedProgress, setSeedProgress] = useState<{
     running: boolean;
@@ -296,9 +303,16 @@ export function AdminPage() {
         name: form.name,
         lat: Number.parseFloat(form.lat),
         lng: Number.parseFloat(form.lng),
+        providerType: form.providerType,
       });
       toast.success("Provider registered!");
-      setForm({ id: "", name: "", lat: "", lng: "" });
+      setForm({
+        id: "",
+        name: "",
+        lat: "",
+        lng: "",
+        providerType: "MAT Clinic",
+      });
     } catch {
       toast.error("Registration failed. Admin access required.");
     }
@@ -326,7 +340,13 @@ export function AdminPage() {
 
     for (const p of SEED_PROVIDERS) {
       try {
-        await (actor as any).registerProvider(p.id, p.name, p.lat, p.lng);
+        await (actor as any).registerProvider(
+          p.id,
+          p.name,
+          p.lat,
+          p.lng,
+          p.providerType,
+        );
         await (actor as any).toggleLive(p.id, true);
         done++;
         setSeedProgress((prev) => ({ ...prev, done }));
@@ -826,6 +846,24 @@ export function AdminPage() {
                   />
                 </div>
               </div>
+              <div>
+                <Label htmlFor="reg-type">Provider Type</Label>
+                <select
+                  id="reg-type"
+                  value={form.providerType}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, providerType: e.target.value }))
+                  }
+                  className="mt-1 w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-ocid="admin.input"
+                >
+                  <option value="MAT Clinic">MAT Clinic</option>
+                  <option value="Narcan Distribution">
+                    Narcan Distribution
+                  </option>
+                  <option value="Emergency Room">Emergency Room</option>
+                </select>
+              </div>
               <p className="text-xs text-muted-foreground">
                 ⚠ No ZIP code, no PHI stored.
               </p>
@@ -886,6 +924,11 @@ export function AdminPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Health Monitor */}
+        <div className="mt-8">
+          <HealthMonitor />
         </div>
       </div>
     </main>
