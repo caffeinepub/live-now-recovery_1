@@ -1,5 +1,11 @@
 import type { FeatureCollection, Point } from "geojson";
 import { MapPin } from "lucide-react";
+import maplibregl, {
+  type GeoJSONSource,
+  type Map as MaplibreMap,
+  type Popup as MaplibrePopup,
+} from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
 import { useAllProviders, useHandoffCountsByZip } from "../hooks/useQueries";
@@ -91,8 +97,8 @@ export function EnhancedRecoveryMap({
 }: Props) {
   // ── Refs / state ────────────────────────────────────────────────────────
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
-  const popupRef = useRef<maplibregl.Popup | null>(null);
+  const mapInstanceRef = useRef<MaplibreMap | null>(null);
+  const popupRef = useRef<MaplibrePopup | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -200,7 +206,7 @@ export function EnhancedRecoveryMap({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    let map: maplibregl.Map;
+    let map: MaplibreMap;
     try {
       map = new maplibregl.Map({
         container: mapContainerRef.current,
@@ -430,7 +436,7 @@ export function EnhancedRecoveryMap({
   useEffect(() => {
     if (!mapInstanceRef.current || !mapReady) return;
     const source = mapInstanceRef.current.getSource("providers-source") as
-      | maplibregl.GeoJSONSource
+      | GeoJSONSource
       | undefined;
     source?.setData(providersToGeoJSON(providers));
   }, [providers, mapReady]);
@@ -438,7 +444,7 @@ export function EnhancedRecoveryMap({
   useEffect(() => {
     if (!mapInstanceRef.current || !mapReady) return;
     const source = mapInstanceRef.current.getSource("heatmap-source") as
-      | maplibregl.GeoJSONSource
+      | GeoJSONSource
       | undefined;
     source?.setData(handoffCountsToHeatmapGeoJSON(handoffCounts));
   }, [handoffCounts, mapReady]);
@@ -559,9 +565,9 @@ export function EnhancedRecoveryMap({
 
         // Guard: if source already exists (actor refresh), just update data
         if (map.getSource("marketplace-providers")) {
-          (
-            map.getSource("marketplace-providers") as maplibregl.GeoJSONSource
-          ).setData(filteredData(data));
+          (map.getSource("marketplace-providers") as GeoJSONSource).setData(
+            filteredData(data),
+          );
           return;
         }
 
@@ -705,7 +711,7 @@ export function EnhancedRecoveryMap({
             number,
           ];
 
-          (map.getSource("marketplace-providers") as maplibregl.GeoJSONSource)
+          (map.getSource("marketplace-providers") as GeoJSONSource)
             .getClusterExpansionZoom(clusterId)
             .then((zoom) => {
               map.easeTo({ center: coords, zoom: zoom ?? 14, duration: 400 });
@@ -782,7 +788,7 @@ export function EnhancedRecoveryMap({
         const data = loadMarketplaceData();
         marketplaceDataRef.current = data;
         const source = map.getSource("marketplace-providers") as
-          | maplibregl.GeoJSONSource
+          | GeoJSONSource
           | undefined;
         source?.setData(filteredData(data));
       } catch (err) {
@@ -799,7 +805,7 @@ export function EnhancedRecoveryMap({
     if (!mapReady || !mapInstanceRef.current || !marketplaceDataRef.current)
       return;
     const source = mapInstanceRef.current.getSource("marketplace-providers") as
-      | maplibregl.GeoJSONSource
+      | GeoJSONSource
       | undefined;
     if (!source) return;
     source.setData(
