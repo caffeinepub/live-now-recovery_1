@@ -35,9 +35,13 @@ export interface CanisterStateSummary {
 export interface Helper {
     id: string;
     zip: string;
+    consent: boolean;
     note: string;
     createdAt: bigint;
+    email: string;
+    helpType: string;
     phone: string;
+    lastName: string;
     firstName: string;
 }
 export interface ProviderWithStatus {
@@ -76,16 +80,22 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCanisterState(): Promise<CanisterStateSummary>;
     getEmergencyActive(): Promise<Array<ProviderWithStatus>>;
+    getEmergencyBridgeStatus(): Promise<{
+        activatedAt: bigint;
+        activatedBy: string;
+        isActive: boolean;
+    }>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
     getMarketplaceGeoJSON(): Promise<string>;
     getTotalHandoffs(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
-    registerHelper(firstName: string, zip: string, phone: string, note: string): Promise<void>;
+    registerHelper(firstName: string, lastName: string, email: string, zip: string, phone: string, helpType: string, consent: boolean, note: string): Promise<void>;
     registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
     runHeartbeat(): Promise<Array<string>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setEmergencyActive(isActive: boolean): Promise<void>;
     setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
     updateInventory(id: string, newInventory: string): Promise<void>;

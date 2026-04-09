@@ -235,17 +235,31 @@ export function useRegisterHelper() {
   return useMutation({
     mutationFn: async ({
       firstName,
+      lastName,
+      email,
       zip,
-      phone,
-      note,
+      helpType,
+      agreed,
     }: {
       firstName: string;
+      lastName: string;
+      email: string;
       zip: string;
-      phone: string;
-      note: string;
+      helpType: string;
+      agreed: boolean;
     }): Promise<void> => {
       if (!actor) throw new Error("Not connected");
-      return actor.registerHelper(firstName, zip, phone, note);
+      // Backend now accepts all 8 fields directly
+      return actor.registerHelper(
+        firstName,
+        lastName,
+        email,
+        zip,
+        "",
+        helpType,
+        agreed,
+        "",
+      );
     },
   });
 }

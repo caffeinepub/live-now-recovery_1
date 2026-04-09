@@ -8,9 +8,9 @@ import Float "mo:core/Float";
 import Order "mo:core/Order";
 import AccessControl "mo:caffeineai-authorization/access-control";
 import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
+import Migration "migration";
 
-
-
+(with migration = Migration.run)
 actor {
   let DECAY_NS = 14_400_000_000_000;
   let TOKEN_EXPIRY_NS = 300_000_000_000;
@@ -29,8 +29,12 @@ actor {
   public type Helper = {
     id : Text;
     firstName : Text;
+    lastName : Text;
+    email : Text;
     zip : Text;
     phone : Text;
+    helpType : Text;
+    consent : Bool;
     note : Text;
     createdAt : Int;
   };
@@ -113,15 +117,15 @@ actor {
     total_active_providers : Nat;
   };
 
-  // Stable variables for upgrades
-  var providerEntries : [(Text, Provider)] = [];
-  var handoffEntries : [(Text, Handoff)] = [];
-  var tokenEntries : [(Text, HandoffToken)] = [];
-  var zipCountEntries : [(Text, Nat)] = [];
-  var riskPacketEntries : [(Text, RiskPacketHistory)] = [];
-  var helperEntries : [(Text, Helper)] = [];
   var tokenNonce : Nat = 0;
   let adminPrincipals : [Principal] = [];
+
+  // Emergency Bridge Status
+  var emergencyBridgeStatus : { isActive : Bool; activatedAt : Int; activatedBy : Principal } = {
+    isActive = false;
+    activatedAt = 0;
+    activatedBy = Principal.fromText("aaaaa-aa");
+  };
 
   // Runtime state
   let providers = Map.empty<Text, Provider>();
@@ -131,37 +135,6 @@ actor {
   let riskPackets = Map.empty<Text, RiskPacketHistory>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let helpers = Map.empty<Text, Helper>();
-
-  // Restore state from stable variables
-  system func preupgrade() {
-    providerEntries := providers.entries().toArray();
-    handoffEntries := handoffs.entries().toArray();
-    tokenEntries := tokens.entries().toArray();
-    zipCountEntries := zipCounts.entries().toArray();
-    riskPacketEntries := riskPackets.entries().toArray();
-    helperEntries := helpers.entries().toArray();
-  };
-
-  system func postupgrade() {
-    for ((k, v) in providerEntries.vals()) {
-      providers.add(k, v);
-    };
-    for ((k, v) in handoffEntries.vals()) {
-      handoffs.add(k, v);
-    };
-    for ((k, v) in tokenEntries.vals()) {
-      tokens.add(k, v);
-    };
-    for ((k, v) in zipCountEntries.vals()) {
-      zipCounts.add(k, v);
-    };
-    for ((k, v) in riskPacketEntries.vals()) {
-      riskPackets.add(k, v);
-    };
-    for ((k, v) in helperEntries.vals()) {
-      helpers.add(k, v);
-    };
-  };
 
   // User Profile Functions
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
@@ -186,7 +159,7 @@ actor {
   };
 
   // Helper Volunteer Functions
-  public shared ({ caller }) func registerHelper(firstName : Text, zip : Text, phone : Text, note : Text) : async () {
+  public shared ({ caller }) func registerHelper(firstName : Text, lastName : Text, email : Text, zip : Text, phone : Text, helpType : Text, consent : Bool, note : Text) : async () {
     if (caller.isAnonymous()) {
       Runtime.trap("Anonymous callers are not allowed");
     };
@@ -194,8 +167,12 @@ actor {
     let helper : Helper = {
       id;
       firstName;
+      lastName;
+      email;
       zip;
       phone;
+      helpType;
+      consent;
       note;
       createdAt = Time.now();
     };
@@ -207,6 +184,25 @@ actor {
       Runtime.trap("Unauthorized: Only admins can view helpers");
     };
     helpers.values().toArray();
+  };
+
+  // Emergency Bridge Status Functions
+  public shared ({ caller }) func setEmergencyActive(isActive : Bool) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can set emergency bridge status");
+    };
+    emergencyBridgeStatus := { isActive; activatedAt = Time.now(); activatedBy = caller };
+  };
+
+  public query func getEmergencyBridgeStatus() : async { isActive : Bool; activatedAt : Int; activatedBy : Text } {
+    {
+      isActive = emergencyBridgeStatus.isActive;
+      activatedAt = emergencyBridgeStatus.activatedAt;
+      activatedBy = emergencyBridgeStatus.activatedBy.toText();
+    };
   };
 
   // Helper function to check if caller is admin (legacy adminPrincipals list)

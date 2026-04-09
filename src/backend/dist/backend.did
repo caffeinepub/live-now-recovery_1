@@ -43,9 +43,13 @@ type ProviderStatus =
  };
 type Helper = 
  record {
+   consent: bool;
    createdAt: int;
+   email: text;
    firstName: text;
+   helpType: text;
    id: text;
+   lastName: text;
    note: text;
    phone: text;
    zip: text;
@@ -70,6 +74,12 @@ service : {
   getCallerUserRole: () -> (UserRole) query;
   getCanisterState: () -> (CanisterStateSummary) query;
   getEmergencyActive: () -> (vec ProviderWithStatus) query;
+  getEmergencyBridgeStatus: () ->
+   (record {
+      activatedAt: int;
+      activatedBy: text;
+      isActive: bool;
+    }) query;
   getHandoffCountsByZip: () -> (vec record {
                                       text;
                                       nat;
@@ -79,11 +89,13 @@ service : {
   getUserProfile: (user: principal) -> (opt UserProfile) query;
   isCallerAdmin: () -> (bool) query;
   receiveRiskPacket: (packet: RiskPacket) -> ();
-  registerHelper: (firstName: text, zip: text, phone: text, note: text) -> ();
+  registerHelper: (firstName: text, lastName: text, email: text, zip: 
+   text, phone: text, helpType: text, consent: bool, note: text) -> ();
   registerProvider: (id: text, name: text, lat: float64, lng: float64,
    providerType: text) -> ();
   runHeartbeat: () -> (vec text);
   saveCallerUserProfile: (profile: UserProfile) -> ();
+  setEmergencyActive: (isActive: bool) -> ();
   setProviderActiveStatus: (id: text, status: bool) -> ();
   toggleLive: (id: text, status: bool) -> ();
   updateInventory: (id: text, newInventory: text) -> ();

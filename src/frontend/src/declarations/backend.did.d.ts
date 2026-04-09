@@ -18,9 +18,13 @@ export interface CanisterStateSummary {
 export interface Helper {
   'id' : string,
   'zip' : string,
+  'consent' : boolean,
   'note' : string,
   'createdAt' : bigint,
+  'email' : string,
+  'helpType' : string,
   'phone' : string,
+  'lastName' : string,
   'firstName' : string,
 }
 export type ProviderStatus = { 'Live' : null } |
@@ -65,19 +69,27 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCanisterState' : ActorMethod<[], CanisterStateSummary>,
   'getEmergencyActive' : ActorMethod<[], Array<ProviderWithStatus>>,
+  'getEmergencyBridgeStatus' : ActorMethod<
+    [],
+    { 'activatedAt' : bigint, 'activatedBy' : string, 'isActive' : boolean }
+  >,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
   'getMarketplaceGeoJSON' : ActorMethod<[], string>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'receiveRiskPacket' : ActorMethod<[RiskPacket], undefined>,
-  'registerHelper' : ActorMethod<[string, string, string, string], undefined>,
+  'registerHelper' : ActorMethod<
+    [string, string, string, string, string, string, boolean, string],
+    undefined
+  >,
   'registerProvider' : ActorMethod<
     [string, string, number, number, string],
     undefined
   >,
   'runHeartbeat' : ActorMethod<[], Array<string>>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setEmergencyActive' : ActorMethod<[boolean], undefined>,
   'setProviderActiveStatus' : ActorMethod<[string, boolean], undefined>,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
   'updateInventory' : ActorMethod<[string, string], undefined>,

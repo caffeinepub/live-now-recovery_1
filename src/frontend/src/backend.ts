@@ -117,9 +117,13 @@ export interface CanisterStateSummary {
 export interface Helper {
     id: string;
     zip: string;
+    consent: boolean;
     note: string;
     createdAt: bigint;
+    email: string;
+    helpType: string;
     phone: string;
+    lastName: string;
     firstName: string;
 }
 export interface ProviderWithStatus {
@@ -159,16 +163,22 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCanisterState(): Promise<CanisterStateSummary>;
     getEmergencyActive(): Promise<Array<ProviderWithStatus>>;
+    getEmergencyBridgeStatus(): Promise<{
+        activatedAt: bigint;
+        activatedBy: string;
+        isActive: boolean;
+    }>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
     getMarketplaceGeoJSON(): Promise<string>;
     getTotalHandoffs(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
-    registerHelper(firstName: string, zip: string, phone: string, note: string): Promise<void>;
+    registerHelper(firstName: string, lastName: string, email: string, zip: string, phone: string, helpType: string, consent: boolean, note: string): Promise<void>;
     registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
     runHeartbeat(): Promise<Array<string>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setEmergencyActive(isActive: boolean): Promise<void>;
     setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
     updateInventory(id: string, newInventory: string): Promise<void>;
@@ -304,6 +314,24 @@ export class Backend implements backendInterface {
             return from_candid_vec_n3(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getEmergencyBridgeStatus(): Promise<{
+        activatedAt: bigint;
+        activatedBy: string;
+        isActive: boolean;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getEmergencyBridgeStatus();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getEmergencyBridgeStatus();
+            return result;
+        }
+    }
     async getHandoffCountsByZip(): Promise<Array<[string, bigint]>> {
         if (this.processError) {
             try {
@@ -388,17 +416,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerHelper(arg0: string, arg1: string, arg2: string, arg3: string): Promise<void> {
+    async registerHelper(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: boolean, arg7: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3);
+                const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3);
+            const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
             return result;
         }
     }
@@ -441,6 +469,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.saveCallerUserProfile(arg0);
+            return result;
+        }
+    }
+    async setEmergencyActive(arg0: boolean): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setEmergencyActive(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setEmergencyActive(arg0);
             return result;
         }
     }

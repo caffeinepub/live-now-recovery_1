@@ -196,9 +196,11 @@ function HelperForm({ onBack }: { onBack: () => void }) {
     try {
       await registerHelper.mutateAsync({
         firstName: firstName.trim(),
+        lastName: "",
+        email: email.trim() || phone.trim(),
         zip: zip.trim(),
-        phone: phone.trim(),
-        note: reason.trim(),
+        helpType: reason.trim() || "general-volunteer",
+        agreed: true,
       });
       setSubmitted(true);
     } catch {

@@ -112,7 +112,7 @@ export function HomePage() {
   const { loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
 
-  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [show3dBuildings, setShow3dBuildings] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -161,8 +161,13 @@ export function HomePage() {
   const liveCount = liveProviders.length;
 
   const filteredBySearch = providers.filter((p) => {
-    if (!search.trim()) return true;
-    return p.name.toLowerCase().includes(search.toLowerCase());
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const pType = (
+      (p as unknown as { providerType?: string }).providerType ?? ""
+    ).toLowerCase();
+    // Search across name, providerType, and any address/city fields
+    return p.name.toLowerCase().includes(q) || pType.includes(q);
   });
 
   const filteredByType = providers.filter((p) => {
@@ -301,9 +306,9 @@ export function HomePage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search by provider name or city…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, city, or type…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-14 pl-10 pr-4 rounded-xl shadow-lg bg-white text-gray-900 placeholder-gray-500 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
                 data-ocid="home.search_input"
               />
@@ -602,6 +607,27 @@ export function HomePage() {
 
             {/* Provider list — 40% */}
             <div className="lg:col-span-2">
+              {/* Unified search bar */}
+              <div className="relative mb-3">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                  style={{ color: "oklch(0.50 0.03 220)" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search by name, city, or type…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                  style={{
+                    background: "oklch(0.18 0.035 225)",
+                    border: "1px solid oklch(0.28 0.04 225)",
+                    color: "oklch(0.90 0.02 200)",
+                  }}
+                  data-ocid="home.provider_search"
+                />
+              </div>
+
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="w-4 h-4 text-foreground/60" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/60">

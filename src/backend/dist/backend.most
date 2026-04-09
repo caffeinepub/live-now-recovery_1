@@ -1,4 +1,4 @@
-// Version: 1.0.0
+// Version: 3.0.0
 type Data__791452850<K, V> =
   {var count : Nat__490723111; kvs : [var ?(K, V)]};
 type HandoffToken__969534999 =
@@ -6,9 +6,13 @@ type HandoffToken__969534999 =
 type Handoff__23152836 = {timestamp : Int; tokenId : Text; zipCode : Text};
 type Helper__207691655 =
   {
+    consent : Bool;
     createdAt : Int;
+    email : Text;
     firstName : Text;
+    helpType : Text;
     id : Text;
+    lastName : Text;
     note : Text;
     phone : Text;
     zip : Text
@@ -24,6 +28,48 @@ type Nat__490723111 = Nat__920180692;
 type Nat__920180692 = Nat;
 type Node__46230540<K, V> =
   {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type OldHandoffToken__518140473 =
+  {createdAt : Int; token : Text; used : Bool; zipCode : Text};
+type OldHandoff__170496380 =
+  {timestamp : Int; tokenId : Text; zipCode : Text};
+type OldHelper__812818786 =
+  {
+    createdAt : Int;
+    firstName : Text;
+    id : Text;
+    note : Text;
+    phone : Text;
+    zip : Text
+  };
+type OldProvider__456089966 =
+  {
+    id : Text;
+    inventory : Text;
+    isLive : Bool;
+    is_active : Bool;
+    is_verified : Bool;
+    lastVerified : Int;
+    lat : Float;
+    lng : Float;
+    name : Text;
+    providerType : Text;
+    reputationScore : Nat
+  };
+type OldRiskPacketHistory__254484244 =
+  {
+    current_status : Bool;
+    latest_risk_score : Nat;
+    latest_update_time : Nat;
+    packets : [OldRiskPacket__137703204]
+  };
+type OldRiskPacket__137703204 =
+  {
+    data_source : Text;
+    last_update_time : Nat;
+    provider_id : Text;
+    risk_score : Nat;
+    status : Bool
+  };
 type Provider__999103737 =
   {
     id : Text;
@@ -55,7 +101,7 @@ type RiskPacket__983375089 =
   };
 type UserProfile__491224006 = {name : Text};
 type UserRole__1054455867 = {#admin; #guest; #user};
-actor {
+actor ({
   stable DECAY_NS : Nat;
   stable HIGH_RISK_THRESHOLD : Nat;
   stable TOKEN_EXPIRY_NS : Nat;
@@ -65,31 +111,58 @@ actor {
       userRoles : Map__605269027<Principal, UserRole__1054455867>
     };
   stable adminPrincipals : [Principal];
-  stable var handoffEntries : [(Text, Handoff__23152836)];
+  stable var emergencyBridgeStatus :
+    {activatedAt : Int; activatedBy : Principal; isActive : Bool};
+  in var handoffEntries : [(Text, OldHandoff__170496380)];
+  in handoffs : Map__605269027<Text, OldHandoff__170496380>;
+  in var helperEntries : [(Text, OldHelper__812818786)];
+  in helpers : Map__605269027<Text, OldHelper__812818786>;
+  in var providerEntries : [(Text, OldProvider__456089966)];
+  in providers : Map__605269027<Text, OldProvider__456089966>;
+  in var riskPacketEntries : [(Text, OldRiskPacketHistory__254484244)];
+  in riskPackets : Map__605269027<Text, OldRiskPacketHistory__254484244>;
+  in var tokenEntries : [(Text, OldHandoffToken__518140473)];
+  stable var tokenNonce : Nat;
+  in tokens : Map__605269027<Text, OldHandoffToken__518140473>;
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  in var zipCountEntries : [(Text, Nat)];
+  in zipCounts : Map__605269027<Text, Nat>
+}, {
+  stable DECAY_NS : Nat;
+  stable HIGH_RISK_THRESHOLD : Nat;
+  stable TOKEN_EXPIRY_NS : Nat;
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__1054455867>
+    };
+  stable adminPrincipals : [Principal];
+  stable var emergencyBridgeStatus :
+    {activatedAt : Int; activatedBy : Principal; isActive : Bool};
   stable handoffs :
     {
       var root : Node__46230540<Text, Handoff__23152836>;
       var size : Nat__490723111
     };
-  stable var helperEntries : [(Text, Helper__207691655)];
   stable helpers :
     {
       var root : Node__46230540<Text, Helper__207691655>;
       var size : Nat__490723111
     };
-  stable var providerEntries : [(Text, Provider__999103737)];
   stable providers :
     {
       var root : Node__46230540<Text, Provider__999103737>;
       var size : Nat__490723111
     };
-  stable var riskPacketEntries : [(Text, RiskPacketHistory__898629859)];
   stable riskPackets :
     {
       var root : Node__46230540<Text, RiskPacketHistory__898629859>;
       var size : Nat__490723111
     };
-  stable var tokenEntries : [(Text, HandoffToken__969534999)];
   stable var tokenNonce : Nat;
   stable tokens :
     {
@@ -101,7 +174,6 @@ actor {
       var root : Node__46230540<Principal, UserProfile__491224006>;
       var size : Nat__490723111
     };
-  stable var zipCountEntries : [(Text, Nat)];
   stable zipCounts :
     {var root : Node__46230540<Text, Nat>; var size : Nat__490723111}
-};
+}) ;

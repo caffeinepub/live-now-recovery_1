@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   BedDouble,
@@ -312,7 +313,8 @@ export function AdminPage() {
   const registerProvider = useRegisterProvider();
   const toggleLive = useToggleLive();
   const verifyProvider = useVerifyProvider();
-  const { actor } = useActor(createActor);
+  const { actor, isFetching: actorFetching } = useActor(createActor);
+  const qc = useQueryClient();
 
   const [form, setForm] = useState({
     id: "",
@@ -329,6 +331,52 @@ export function AdminPage() {
     errors: string[];
   }>({ running: false, done: 0, total: SEED_PROVIDERS.length, errors: [] });
 
+  // === Backend-backed global bridge status ===
+  const { data: bridgeStatus, isLoading: bridgeLoading } = useQuery({
+    queryKey: ["emergencyBridgeStatus"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getEmergencyBridgeStatus();
+    },
+    enabled: !!actor && !actorFetching,
+    refetchInterval: 30_000,
+  });
+  const [bridgeActing, setBridgeActing] = useState(false);
+
+  // Derive the activatedAt in ms from backend bigint nanoseconds
+  const bridgeActivatedAtMs =
+    bridgeStatus?.isActive && bridgeStatus.activatedAt
+      ? Number(bridgeStatus.activatedAt) / 1_000_000
+      : null;
+
+  const handleGlobalBridgeToggle = async (activate: boolean) => {
+    if (!actor) return;
+    setBridgeActing(true);
+    try {
+      await actor.setEmergencyActive(activate);
+      // Also mirror to localStorage as a cache for quick reads elsewhere
+      if (activate) {
+        localStorage.setItem(
+          "bridge_active_global",
+          JSON.stringify({ expiresAt: Date.now() + 72 * 3_600_000 }),
+        );
+      } else {
+        localStorage.removeItem("bridge_active_global");
+      }
+      await qc.invalidateQueries({ queryKey: ["emergencyBridgeStatus"] });
+      toast.success(
+        activate
+          ? "72-Hour Bridge status activated on-chain."
+          : "Bridge status cleared on-chain.",
+      );
+    } catch {
+      toast.error("Failed to update bridge status. Admin access required.");
+    } finally {
+      setBridgeActing(false);
+    }
+  };
+
+  // Per-ER legacy open_bed toggle (localStorage only, no backend for individual ER status)
   // Emergency availability state
   const [emergencyStatuses, setEmergencyStatuses] = useState<
     Record<string, { status: EmergencyStatus; setAt: number } | null>
@@ -342,12 +390,34 @@ export function AdminPage() {
     for (const p of providers) {
       map[p.id] = getEmergencyStatus(p.id);
     }
+    // Sync 72hr_bridge status from backend if active
+    if (bridgeStatus?.isActive && bridgeActivatedAtMs) {
+      for (const p of providers) {
+        if (isERProvider({ name: p.name, providerType: p.providerType })) {
+          // If backend bridge is active and no local open_bed override, show bridge
+          if (!map[p.id] || map[p.id]?.status !== "open_bed") {
+            map[p.id] = { status: "72hr_bridge", setAt: bridgeActivatedAtMs };
+          }
+        }
+      }
+    }
     setEmergencyStatuses(map);
-  }, [providers]);
+  }, [providers, bridgeStatus, bridgeActivatedAtMs]);
 
-  const handleEmergencyToggle = (id: string, status: EmergencyStatus) => {
+  const handleEmergencyToggle = async (id: string, status: EmergencyStatus) => {
     const current = emergencyStatuses[id]?.status;
     const next = current === status ? null : status;
+
+    // For 72hr_bridge toggles, wire to backend
+    if (
+      status === "72hr_bridge" ||
+      (next === null && current === "72hr_bridge")
+    ) {
+      await handleGlobalBridgeToggle(next === "72hr_bridge");
+      return;
+    }
+
+    // For open_bed, keep localStorage-only
     setEmergencyStatus(id, next);
     setEmergencyStatuses((prev) => ({
       ...prev,
@@ -658,10 +728,102 @@ export function AdminPage() {
             to bridge a patient to ongoing MAT treatment. Signal which ERs are
             actively participating tonight.
           </p>
-          <p className="text-xs mb-6" style={{ color: "oklch(0.42 0.03 220)" }}>
-            Status is stored locally in this browser and auto-expires after 72
-            hours. Map pins will show a gold glow when bridge is active.
+          <p className="text-xs mb-4" style={{ color: "oklch(0.42 0.03 220)" }}>
+            Bridge status is stored on-chain and auto-expires after 72 hours.
+            Map pins will show a gold glow when bridge is active.
           </p>
+
+          {/* Global backend bridge toggle */}
+          <div
+            className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl px-4 py-3 mb-6"
+            style={{
+              background: bridgeStatus?.isActive
+                ? "oklch(0.75 0.18 70 / 0.10)"
+                : "oklch(0.18 0.04 240)",
+              border: bridgeStatus?.isActive
+                ? "1px solid rgba(251,191,36,0.35)"
+                : "1px solid oklch(0.26 0.05 240)",
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-sm font-semibold"
+                  style={{
+                    color: bridgeStatus?.isActive
+                      ? "#fbbf24"
+                      : "oklch(0.70 0.04 220)",
+                  }}
+                >
+                  {bridgeLoading
+                    ? "Checking on-chain status…"
+                    : bridgeStatus?.isActive
+                      ? "72-Hr Bridge ACTIVE on-chain"
+                      : "72-Hr Bridge inactive"}
+                </span>
+                {bridgeStatus?.isActive && (
+                  <span
+                    className="inline-block w-2 h-2 rounded-full animate-pulse"
+                    style={{ background: "#fbbf24" }}
+                  />
+                )}
+              </div>
+              {bridgeStatus?.isActive && bridgeActivatedAtMs && (
+                <p
+                  className="text-[11px] mt-0.5"
+                  style={{ color: "oklch(0.50 0.03 220)" }}
+                >
+                  {formatCountdown(bridgeActivatedAtMs)} ·{" "}
+                  {bridgeStatus.activatedBy
+                    ? `by ${bridgeStatus.activatedBy.slice(0, 12)}…`
+                    : ""}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {bridgeStatus?.isActive ? (
+                <button
+                  type="button"
+                  onClick={() => handleGlobalBridgeToggle(false)}
+                  disabled={bridgeActing}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5"
+                  style={{
+                    background: "oklch(0.20 0.04 240)",
+                    border: "1px solid rgba(251,191,36,0.25)",
+                    color: "#fbbf24",
+                  }}
+                  data-ocid="admin.toggle"
+                >
+                  {bridgeActing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <X className="w-3.5 h-3.5" />
+                  )}
+                  Deactivate Bridge
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleGlobalBridgeToggle(true)}
+                  disabled={bridgeActing || bridgeLoading}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5"
+                  style={{
+                    background: "oklch(0.75 0.18 70 / 0.15)",
+                    border: "1px solid rgba(251,191,36,0.35)",
+                    color: "#fbbf24",
+                  }}
+                  data-ocid="admin.toggle"
+                >
+                  {bridgeActing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Clock className="w-3.5 h-3.5" />
+                  )}
+                  Activate 72-Hr Bridge
+                </button>
+              )}
+            </div>
+          </div>
 
           {erProviders.length === 0 ? (
             <div className="py-8 text-center" data-ocid="admin.empty_state">

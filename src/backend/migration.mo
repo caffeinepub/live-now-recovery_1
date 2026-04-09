@@ -1,8 +1,9 @@
 import Map "mo:core/Map";
 
 module {
-  // Provider type — 11 fields (current deployed schema)
-  type Provider = {
+  // ── Old types (copied from .old/src/backend/main.mo) ──────────────────────
+
+  type OldProvider = {
     id : Text;
     name : Text;
     lat : Float;
@@ -16,20 +17,20 @@ module {
     reputationScore : Nat;
   };
 
-  type Handoff = {
+  type OldHandoff = {
     zipCode : Text;
     timestamp : Int;
     tokenId : Text;
   };
 
-  type HandoffToken = {
+  type OldHandoffToken = {
     token : Text;
     zipCode : Text;
     createdAt : Int;
     used : Bool;
   };
 
-  type RiskPacket = {
+  type OldRiskPacket = {
     provider_id : Text;
     data_source : Text;
     risk_score : Nat;
@@ -37,14 +38,15 @@ module {
     status : Bool;
   };
 
-  type RiskPacketHistory = {
-    packets : [RiskPacket];
+  type OldRiskPacketHistory = {
+    packets : [OldRiskPacket];
     current_status : Bool;
     latest_risk_score : Nat;
     latest_update_time : Nat;
   };
 
-  type Helper = {
+  // Old Helper (6 fields)
+  type OldHelper = {
     id : Text;
     firstName : Text;
     zip : Text;
@@ -53,63 +55,65 @@ module {
     createdAt : Int;
   };
 
-  type UserProfile = {
-    name : Text;
+  // New Helper (10 fields)
+  type NewHelper = {
+    id : Text;
+    firstName : Text;
+    lastName : Text;
+    email : Text;
+    zip : Text;
+    phone : Text;
+    helpType : Text;
+    consent : Bool;
+    note : Text;
+    createdAt : Int;
   };
 
+  // ── Old actor stable state ────────────────────────────────────────────────
+  // Includes both the classical-persistence staging arrays AND the Maps,
+  // because both are stable fields in the old actor.
   type OldActor = {
-    var providerEntries : [(Text, Provider)];
-    var handoffEntries : [(Text, Handoff)];
-    var tokenEntries : [(Text, HandoffToken)];
+    // classical staging arrays (will be dropped — data is in the Maps)
+    var providerEntries : [(Text, OldProvider)];
+    var handoffEntries : [(Text, OldHandoff)];
+    var tokenEntries : [(Text, OldHandoffToken)];
     var zipCountEntries : [(Text, Nat)];
-    var riskPacketEntries : [(Text, RiskPacketHistory)];
-    var helperEntries : [(Text, Helper)];
-    var tokenNonce : Nat;
-    var adminPrincipals : [Principal];
-    providers : Map.Map<Text, Provider>;
-    handoffs : Map.Map<Text, Handoff>;
-    tokens : Map.Map<Text, HandoffToken>;
+    var riskPacketEntries : [(Text, OldRiskPacketHistory)];
+    var helperEntries : [(Text, OldHelper)];
+    // Maps (these carry the live data in enhanced orthogonal persistence)
+    providers : Map.Map<Text, OldProvider>;
+    handoffs : Map.Map<Text, OldHandoff>;
+    tokens : Map.Map<Text, OldHandoffToken>;
     zipCounts : Map.Map<Text, Nat>;
-    riskPackets : Map.Map<Text, RiskPacketHistory>;
-    userProfiles : Map.Map<Principal, UserProfile>;
-    helpers : Map.Map<Text, Helper>;
+    riskPackets : Map.Map<Text, OldRiskPacketHistory>;
+    helpers : Map.Map<Text, OldHelper>;
   };
 
+  // ── New actor stable state ────────────────────────────────────────────────
+  // Only the helpers Map needs transformation; the others pass through.
   type NewActor = {
-    var providerEntries : [(Text, Provider)];
-    var handoffEntries : [(Text, Handoff)];
-    var tokenEntries : [(Text, HandoffToken)];
-    var zipCountEntries : [(Text, Nat)];
-    var riskPacketEntries : [(Text, RiskPacketHistory)];
-    var helperEntries : [(Text, Helper)];
-    var tokenNonce : Nat;
-    providers : Map.Map<Text, Provider>;
-    handoffs : Map.Map<Text, Handoff>;
-    tokens : Map.Map<Text, HandoffToken>;
+    providers : Map.Map<Text, OldProvider>;
+    handoffs : Map.Map<Text, OldHandoff>;
+    tokens : Map.Map<Text, OldHandoffToken>;
     zipCounts : Map.Map<Text, Nat>;
-    riskPackets : Map.Map<Text, RiskPacketHistory>;
-    userProfiles : Map.Map<Principal, UserProfile>;
-    helpers : Map.Map<Text, Helper>;
+    riskPackets : Map.Map<Text, OldRiskPacketHistory>;
+    helpers : Map.Map<Text, NewHelper>;
   };
 
   public func run(old : OldActor) : NewActor {
-    // Pass-through migration — schema is already at 11 fields.
-    // adminPrincipals is consumed and intentionally dropped (replaced by accessControlState).
+    // Migrate helpers Map: add default values for new fields
+    let newHelpers = old.helpers.map<Text, OldHelper, NewHelper>(
+      func(_k, h) {
+        { h with lastName = ""; email = ""; helpType = "General volunteer"; consent = true };
+      }
+    );
     {
-      var providerEntries = old.providerEntries;
-      var handoffEntries = old.handoffEntries;
-      var tokenEntries = old.tokenEntries;
-      var zipCountEntries = old.zipCountEntries;
-      var riskPacketEntries = old.riskPacketEntries;
-      var helperEntries = old.helperEntries;
-      var tokenNonce = old.tokenNonce;
       providers = old.providers;
       handoffs = old.handoffs;
       tokens = old.tokens;
       zipCounts = old.zipCounts;
       riskPackets = old.riskPackets;
-      userProfiles = old.userProfiles;
-      helpers = old.helpers;
+      helpers = newHelpers;
     };
   };
 };
