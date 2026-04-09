@@ -10,33 +10,44 @@ import { isProviderStale } from "../utils/providerUtils";
 //   (b) there are ZERO active/live providers right now (including 24/7 kiosks)
 // - Naloxone Kiosks are always "available" (24/7) — they count toward liveCount.
 //   If any kiosk exists, liveCount > 0, so the full alert almost never fires.
-// - If after hours but kiosks ARE available, show a softer informational banner.
+// - If after hours but providers ARE available, show a softer informational banner
+//   to remind users that after-hours access points exist on the map.
 // Goal: route patients to live providers first; hotline is the last resort.
 export function EmergencyBanner() {
-  const isEmergencyMode = useEmergencyMode();
+  const isAfterHours = useEmergencyMode();
   const { data: providers = [] } = useAllProviders();
 
-  // Naloxone Kiosks count as always available (24/7)
-  const kioskCount = providers.filter(
-    (p) => (p as { providerType?: string }).providerType === "Naloxone Kiosk",
+  // Naloxone Kiosks count as always available (24/7 — no live toggle needed)
+  const kioskCount = providers.filter((p) => {
+    const pt = p.providerType ?? "";
+    return (
+      pt === "Naloxone Kiosk" ||
+      pt === "Naloxone Kiosk/Vending Machine" ||
+      pt.toLowerCase().includes("kiosk") ||
+      pt.toLowerCase().includes("vending")
+    );
+  }).length;
+
+  // Count actually live providers (non-stale) — Naloxone Kiosks always count
+  const liveProviderCount = providers.filter(
+    (p) => p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
   ).length;
 
-  const liveCount =
-    providers.filter(
-      (p) =>
-        p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
-    ).length + kioskCount;
+  // Total available = live + kiosks (kiosks are always "on")
+  const totalAvailable = liveProviderCount + kioskCount;
 
-  // Show the full emergency alert only when after-hours AND no providers at all
-  const showFullAlert = isEmergencyMode && liveCount === 0;
+  // Full red alert: after hours AND absolutely zero coverage
+  const showFullAlert = isAfterHours && totalAvailable === 0;
 
-  // Show a softer informational message if after-hours but kiosks are available
-  const showSoftAlert = isEmergencyMode && liveCount === 0 && kioskCount > 0;
+  // Soft info bar: after hours but some coverage exists (kiosks, telehealth, ER bridge)
+  // Only show if we're after hours — but coverage exists so don't alarm them
+  const showSoftBanner = isAfterHours && totalAvailable > 0;
 
-  if (!isEmergencyMode) return null;
+  // If during business hours with providers live → no banner
+  if (!isAfterHours) return null;
 
-  // Soft alert: after hours but kiosks provide 24/7 access
-  if (showSoftAlert || (isEmergencyMode && kioskCount > 0 && liveCount > 0)) {
+  // After hours with coverage → soft informational bar
+  if (showSoftBanner) {
     return (
       <div
         className="w-full text-sm font-medium py-2.5 px-4"
@@ -73,6 +84,7 @@ export function EmergencyBanner() {
     );
   }
 
+  // After hours AND zero coverage → full red emergency alert
   if (!showFullAlert) return null;
 
   return (

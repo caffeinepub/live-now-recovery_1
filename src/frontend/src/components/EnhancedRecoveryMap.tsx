@@ -874,12 +874,16 @@ export function EnhancedRecoveryMap({
         </svg>
       </button>
 
-      {/* Empty state overlay */}
+      {/* Empty state overlay — shown when canister has no providers yet */}
       {mapReady && providers.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 rounded-xl z-10 pointer-events-none">
-          <MapPin className="w-8 h-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground font-medium">
-            No providers found in this area
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50 rounded-xl z-10 pointer-events-none px-6 text-center">
+          <MapPin className="w-8 h-8" style={{ color: "#6ee7d0" }} />
+          <p className="text-sm font-semibold" style={{ color: "#6ee7d0" }}>
+            No providers loaded yet
+          </p>
+          <p className="text-xs" style={{ color: "rgba(110,231,208,0.6)" }}>
+            Admin: go to /admin → Sign In → "Seed Ohio Providers" to populate
+            the map
           </p>
         </div>
       )}

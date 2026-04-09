@@ -527,7 +527,8 @@ export function AdminPage() {
     }
   };
 
-  if (adminLoading || loginStatus === "logging-in") {
+  // Show spinner only while actively logging in
+  if (loginStatus === "logging-in") {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -535,40 +536,109 @@ export function AdminPage() {
       >
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">Signing in…</p>
         </div>
       </div>
     );
   }
 
-  if (loginStatus !== "success" || !isAdmin) {
+  // Not signed in → show sign-in gate (do NOT block with adminLoading)
+  if (loginStatus !== "success") {
+    return (
+      <main className="min-h-screen" data-ocid="admin.page">
+        {/* Dark hero header — always visible */}
+        <section className="bg-navy px-4 py-16">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="w-5 h-5 text-live-green" />
+              <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+                Admin
+              </p>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3">
+              Admin <span className="text-live-green">Panel</span>
+            </h1>
+            <p className="text-on-dark">
+              Provider verification, seeding, and system controls.
+            </p>
+          </div>
+        </section>
+
+        <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
+          <Lock className="w-12 h-12 text-muted-foreground" />
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Admin Access Required
+            </h2>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Sign in with Internet Identity to access provider verification,
+              seed data, and system controls.
+            </p>
+          </div>
+          <Button
+            onClick={() => login()}
+            className="min-h-[44px] bg-primary hover:bg-primary/90 text-white font-semibold px-8"
+            data-ocid="admin.primary_button"
+          >
+            Sign In with Internet Identity
+          </Button>
+          {loginStatus === "loginError" && (
+            <p className="text-sm text-destructive text-center max-w-xs">
+              Sign in failed. Make sure popups are allowed for this site, then
+              try again.
+            </p>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  // Signed in but not admin — show a clear message
+  if (!adminLoading && !isAdmin) {
+    return (
+      <main className="min-h-screen" data-ocid="admin.page">
+        <section className="bg-navy px-4 py-16">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="w-5 h-5 text-live-green" />
+              <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+                Admin
+              </p>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3">
+              Admin <span className="text-live-green">Panel</span>
+            </h1>
+          </div>
+        </section>
+        <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
+          <Lock className="w-12 h-12 text-muted-foreground" />
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Not Authorized
+            </h2>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Your Internet Identity does not have admin privileges. Contact the
+              platform administrator.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Signed in, still checking admin status
+  if (adminLoading) {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center gap-6 px-4"
-        data-ocid="admin.page"
+        className="min-h-screen flex items-center justify-center"
+        data-ocid="admin.loading_state"
       >
-        <Lock className="w-12 h-12 text-muted-foreground" />
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-foreground mb-2">
-            Admin Access Required
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Sign in with Internet Identity to access admin controls.
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">
+            Verifying admin access…
           </p>
         </div>
-        <Button
-          onClick={() => login()}
-          className="min-h-[44px] bg-primary hover:bg-primary/90 text-white font-semibold px-8"
-          data-ocid="admin.primary_button"
-        >
-          Sign In with Internet Identity
-        </Button>
-        {loginStatus === "loginError" && (
-          <p className="text-sm text-destructive text-center max-w-xs">
-            Sign in failed. Please try again or check that popups are allowed
-            for this site.
-          </p>
-        )}
       </div>
     );
   }

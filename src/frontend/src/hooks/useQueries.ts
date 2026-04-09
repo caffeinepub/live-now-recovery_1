@@ -8,57 +8,111 @@ import type {
 } from "../backend";
 import { createActor } from "../backend";
 
+// ─── Public queries — no authentication required ────────────────────────────
+// These call backend query methods that are publicly accessible on ICP.
+// The actor for query calls does NOT need the user to be authenticated.
+// We only gate on actor existing (not isFetching) so anonymous users can
+// see providers on the map immediately without signing in.
+
 export function useAllProviders() {
-  const { actor, isFetching } = useActor(createActor);
+  const { actor } = useActor(createActor);
   return useQuery<ProviderWithStatus[]>({
     queryKey: ["allProviders"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllProviders();
+      try {
+        const result = await actor.getAllProviders();
+        console.log(`[useAllProviders] Loaded ${result.length} providers`);
+        return result;
+      } catch (err) {
+        console.error("[useAllProviders] Failed to fetch providers:", err);
+        return [];
+      }
     },
-    enabled: !!actor && !isFetching,
+    // enabled when actor exists — does NOT require user authentication
+    enabled: !!actor,
     refetchInterval: 30_000,
+    retry: 2,
   });
 }
 
 export function useEmergencyProviders() {
-  const { actor, isFetching } = useActor(createActor);
+  const { actor } = useActor(createActor);
   return useQuery<ProviderWithStatus[]>({
     queryKey: ["emergencyProviders"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getEmergencyActive();
+      try {
+        return await actor.getEmergencyActive();
+      } catch (err) {
+        console.error("[useEmergencyProviders] Failed:", err);
+        return [];
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
     refetchInterval: 30_000,
+    retry: 2,
   });
 }
 
 export function useTotalHandoffs() {
-  const { actor, isFetching } = useActor(createActor);
+  const { actor } = useActor(createActor);
   return useQuery<bigint>({
     queryKey: ["totalHandoffs"],
     queryFn: async () => {
       if (!actor) return 0n;
-      return actor.getTotalHandoffs();
+      try {
+        return await actor.getTotalHandoffs();
+      } catch (err) {
+        console.error("[useTotalHandoffs] Failed:", err);
+        return 0n;
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
     refetchInterval: 30_000,
+    retry: 2,
   });
 }
 
 export function useHandoffCountsByZip() {
-  const { actor, isFetching } = useActor(createActor);
+  const { actor } = useActor(createActor);
   return useQuery<[string, bigint][]>({
     queryKey: ["handoffCounts"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getHandoffCountsByZip();
+      try {
+        return await actor.getHandoffCountsByZip();
+      } catch (err) {
+        console.error("[useHandoffCountsByZip] Failed:", err);
+        return [];
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
     refetchInterval: 30_000,
+    retry: 2,
   });
 }
+
+export function useGetMarketplaceGeoJSON() {
+  const { actor } = useActor(createActor);
+  return useQuery<string>({
+    queryKey: ["marketplaceGeoJSON"],
+    queryFn: async () => {
+      if (!actor) return '{"type":"FeatureCollection","features":[]}';
+      try {
+        return await actor.getMarketplaceGeoJSON();
+      } catch (err) {
+        console.error("[useGetMarketplaceGeoJSON] Failed:", err);
+        return '{"type":"FeatureCollection","features":[]}';
+      }
+    },
+    enabled: !!actor,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+}
+
+// ─── Auth-gated queries — require actor + user auth to be meaningful ─────────
 
 export function useCanisterState() {
   const { actor, isFetching } = useActor(createActor);
@@ -84,11 +138,17 @@ export function useIsAdmin() {
     queryKey: ["isAdmin"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      try {
+        return await actor.isCallerAdmin();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
   });
 }
+
+// ─── Mutations — all require authenticated actor ─────────────────────────────
 
 export function useToggleLive() {
   const { actor } = useActor(createActor);
@@ -182,19 +242,6 @@ export function useUpdateInventory() {
   });
 }
 
-export function useGetMarketplaceGeoJSON() {
-  const { actor, isFetching } = useActor(createActor);
-  return useQuery<string>({
-    queryKey: ["marketplaceGeoJSON"],
-    queryFn: async () => {
-      if (!actor) return '{"type":"FeatureCollection","features":[]}';
-      return actor.getMarketplaceGeoJSON();
-    },
-    enabled: !!actor && !isFetching,
-    refetchInterval: 30_000,
-  });
-}
-
 export function useGenerateHandoffToken() {
   const { actor } = useActor(createActor);
   return useMutation({
@@ -249,16 +296,16 @@ export function useRegisterHelper() {
       agreed: boolean;
     }): Promise<void> => {
       if (!actor) throw new Error("Not connected");
-      // Backend now accepts all 8 fields directly
+      // Backend accepts 8 fields: firstName, lastName, email, zip, phone, helpType, consent, note
       return actor.registerHelper(
         firstName,
         lastName,
         email,
         zip,
-        "",
+        "", // phone — not collected in UI
         helpType,
         agreed,
-        "",
+        "", // note — not collected in UI
       );
     },
   });
